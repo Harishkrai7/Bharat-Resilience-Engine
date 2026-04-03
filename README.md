@@ -329,10 +329,7 @@ python test_api.py
 
 ## 👥 Team
 
-| Name | Role |
-|:---|:---|
-| **Soham Shaw** | Backend Development, ML Integration, API Design |
-| **Contributor** | Frontend Development, UI/UX Design |
+Soham Shaw, Harish Kumar Rai, Hrichik Ghosh, Priyanshu Raman
 
 ---
 
