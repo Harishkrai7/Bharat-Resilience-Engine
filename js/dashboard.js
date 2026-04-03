@@ -6,7 +6,10 @@
   'use strict';
 
   // ── Backend API Configuration ──
-  const BASE_URL = "http://10.3.52.187:5001";
+  // Default to a placeholder, but check localStorage so the user can update it via console
+  // Example: localStorage.setItem('backend_url', 'https://your-backend.pythonanywhere.com')
+  const DEFAULT_URL = "http://10.3.52.187:5001"; 
+  const BASE_URL = localStorage.getItem('backend_url') || DEFAULT_URL;
 
   // ── Call Flask backend ──
   async function callBackend(scenario, severity) {
