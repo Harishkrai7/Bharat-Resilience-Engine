@@ -11,8 +11,8 @@ def load_model_and_preproc():
     global _model_cache, _preprocessor_cache
     if _model_cache and _preprocessor_cache: return _model_cache, _preprocessor_cache
     try:
-        model_path = "models/cyber_iso_forest.pkl"
-        prep_path = "models/cyber_preprocessor.pkl"
+        model_path = os.getenv('CYBER_MODEL_PATH', 'models/cyber_iso_forest.pkl')
+        prep_path = os.getenv('CYBER_PREPROCESSOR_PATH', 'models/cyber_preprocessor.pkl')
         if os.path.exists(model_path) and os.path.exists(prep_path):
             _model_cache = joblib.load(model_path)
             _preprocessor_cache = joblib.load(prep_path)
@@ -30,7 +30,7 @@ def cyber_crisis():
 
     model, preprocessor = load_model_and_preproc()
     if model and preprocessor:
-        data_path = "data/cyber_cleaned_data.csv"
+        data_path = os.getenv('CYBER_DATA_PATH', 'data/cyber_cleaned_data.csv')
         df = pd.read_csv(data_path)
         sample_df = df.sample(n=total_nodes, replace=True).reset_index(drop=True)
         

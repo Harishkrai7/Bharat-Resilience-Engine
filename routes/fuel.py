@@ -12,8 +12,8 @@ def load_model_and_features():
     global _model_cache, _features_cache
     if _model_cache and _features_cache: return _model_cache, _features_cache
     try:
-        model_path = "models/fuel_xgboost.pkl"
-        feat_path = "models/fuel_feature_names.pkl"
+        model_path = os.getenv('FUEL_MODEL_PATH', 'models/fuel_xgboost.pkl')
+        feat_path = os.getenv('FUEL_FEATURES_PATH', 'models/fuel_feature_names.pkl')
         if os.path.exists(model_path) and os.path.exists(feat_path):
             _model_cache = joblib.load(model_path)
             _features_cache = joblib.load(feat_path)

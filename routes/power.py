@@ -12,7 +12,7 @@ def load_model():
     global _model_cache
     if _model_cache: return _model_cache
     try:
-        path = "models/power_model_v2.pkl"
+        path = os.getenv('POWER_MODEL_PATH', 'models/power_model_v2.pkl')
         if os.path.exists(path):
             _model_cache = joblib.load(path)
             return _model_cache
