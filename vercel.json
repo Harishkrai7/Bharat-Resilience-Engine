@@ -1,48 +1,11 @@
 {
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "login.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "dashboard.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "india.svg",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "css/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "js/**",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "images/**",
-      "use": "@vercel/static"
-    }
-  ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/index.py" },
-    { "src": "/css/(.*)", "dest": "css/$1" },
-    { "src": "/js/(.*)", "dest": "js/$1" },
-    { "src": "/images/(.*)", "dest": "images/$1" },
-    { "src": "/india.svg", "dest": "india.svg" },
-    { "src": "/login.html", "dest": "login.html" },
-    { "src": "/login", "dest": "login.html" },
-    { "src": "/dashboard.html", "dest": "dashboard.html" },
-    { "src": "/dashboard", "dest": "dashboard.html" },
-    { "src": "/(.*)", "dest": "index.html" }
+    { "src": "/css/(.*)", "dest": "/css/$1" },
+    { "src": "/js/(.*)", "dest": "/js/$1" },
+    { "src": "/images/(.*)", "dest": "/images/$1" },
+    { "src": "/india.svg", "dest": "/india.svg" },
+    { "src": "/login(.*)", "dest": "/login.html" },
+    { "src": "/dashboard(.*)", "dest": "/dashboard.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
