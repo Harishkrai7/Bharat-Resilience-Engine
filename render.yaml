@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: bharat-resilience-engine
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: POWER_MODEL_PATH
+        value: models/power_model_v2.pkl
+      - key: FUEL_MODEL_PATH
+        value: models/fuel_xgboost.pkl
+      - key: FUEL_FEATURES_PATH
+        value: models/fuel_feature_names.pkl
+      - key: WATER_MODEL_PATH
+        value: models/water_rf.pkl
+      - key: WATER_FEATURES_PATH
+        value: models/water_feature_names.pkl
+      - key: CYBER_MODEL_PATH
+        value: models/cyber_iso_forest.pkl
+      - key: CYBER_PREPROCESSOR_PATH
+        value: models/cyber_preprocessor.pkl
+      - key: CYBER_DATA_PATH
+        value: data/cyber_cleaned_data.csv
