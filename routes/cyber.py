@@ -1,15 +1,25 @@
 from flask import Blueprint, request, jsonify  # pyre-ignore[21]
 from config import INDIAN_STATES, RECOMMENDATIONS  # pyre-ignore[21]
-import numpy as np, pandas as pd, pickle, os  # pyre-ignore[21]
+import numpy as np, pandas as pd, pickle, os, joblib  # pyre-ignore[21]
 
 cyber_bp = Blueprint("cyber", __name__)
 
-def load_model():
-    path = "models/cyber_model.pkl"
-    if os.path.exists(path):
-        with open(path, "rb") as f:
-            return pickle.load(f)
-    return None
+_model_cache = None
+_preprocessor_cache = None
+
+def load_model_and_preproc():
+    global _model_cache, _preprocessor_cache
+    if _model_cache and _preprocessor_cache: return _model_cache, _preprocessor_cache
+    try:
+        model_path = "models/cyber_iso_forest.pkl"
+        prep_path = "models/cyber_preprocessor.pkl"
+        if os.path.exists(model_path) and os.path.exists(prep_path):
+            _model_cache = joblib.load(model_path)
+            _preprocessor_cache = joblib.load(prep_path)
+            return _model_cache, _preprocessor_cache
+    except Exception as e:
+        print("Failed to load Cyber ML model:", e)
+    return None, None
 
 @cyber_bp.route("/api/cyber", methods=["POST"])
 def cyber_crisis():
@@ -18,29 +28,16 @@ def cyber_crisis():
     total_nodes = int(data.get("total_nodes", 200))
     attacked    = int((severity / 100) * total_nodes)
 
-    # Build node data
-    np.random.seed(42)
-    nodes = pd.DataFrame({
-        "node_id":           range(total_nodes),
-        "load_MW":           np.random.normal(500, 100, total_nodes),
-        "voltage_deviation": np.random.normal(0, 0.05, total_nodes),
-        "frequency_drop_Hz": np.random.normal(0, 0.02, total_nodes),
-        "packet_loss_pct":   np.random.normal(1, 0.5, total_nodes),
-        "response_time_ms":  np.random.normal(10, 2, total_nodes),
-    })
-
-    # Inject attack anomalies into first N nodes
-    nodes.loc[:attacked, "packet_loss_pct"]   += np.random.uniform(20, 50, attacked + 1)
-    nodes.loc[:attacked, "response_time_ms"]  += np.random.uniform(100, 500, attacked + 1)
-    nodes.loc[:attacked, "voltage_deviation"] += np.random.uniform(0.2, 0.5, attacked + 1)
-
-    features = ["load_MW", "voltage_deviation",
-                "frequency_drop_Hz", "packet_loss_pct", "response_time_ms"]
-
-    model = load_model()
-    if model:
-        predictions  = model.predict(nodes[features])
-        compromised  = nodes[predictions == -1]["node_id"].tolist()
+    model, preprocessor = load_model_and_preproc()
+    if model and preprocessor:
+        data_path = "data/cyber_cleaned_data.csv"
+        df = pd.read_csv(data_path)
+        sample_df = df.sample(n=total_nodes, replace=True).reset_index(drop=True)
+        
+        # Use real ML preprocessor
+        X = preprocessor.transform(sample_df)
+        predictions = model.predict(X)
+        compromised = sample_df[predictions == -1].index.tolist()
     else:
         compromised  = list(range(attacked))
 
