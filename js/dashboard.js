@@ -70,22 +70,10 @@
 
   // ── Main trigger ──
   window.onUserInput = async function() {
-      // Find the currently active module
-      const activeMod = document.querySelector('.module-card.active');
-      if (!activeMod) return;
-
-      // Map module ID to API scenario name
-      const modMap = {
-          'modPower': 'power',
-          'modWater': 'water',
-          'modFuel': 'fuel',
-          'modCyber': 'cyber'
-      };
-      const scenario = modMap[activeMod.id] || 'power';
-
-      // Get severity from the active module's slider
-      const slider = activeMod.querySelector('input[type="range"]');
-      const severity = slider ? slider.value : 0;
+      const selectedScenario = document.querySelector('.scenario-card.selected');
+      if (!selectedScenario) return;
+      const scenario = selectedScenario.dataset.scenario || 'power';
+      const severity = selectedScenario.dataset.severity || '60';
 
       // Show loading
       const recDesc = document.querySelector('.rec-desc');
@@ -101,6 +89,96 @@
     return;
   }
 
+  // ── Header Text Type Effect ──
+  const topbarTitle = document.getElementById('topbarTitle');
+  if (topbarTitle) {
+    const contentEl = topbarTitle.querySelector('.text-type__content');
+    const cursorEl = topbarTitle.querySelector('.text-type__cursor');
+
+    const textTypeOptions = {
+      texts: [
+        'BHARAT RESILIENCE',
+        'GRID COMMAND LIVE',
+        'NATIONAL RESPONSE CORE'
+      ],
+      typingSpeed: 75,
+      pauseDuration: 1500,
+      deletingSpeed: 50,
+      initialDelay: 200,
+      loop: true,
+      cursorCharacter: '_',
+      hideCursorWhileTyping: false,
+      cursorBlinkDuration: 0.5,
+      variableSpeedEnabled: false,
+      variableSpeedMin: 60,
+      variableSpeedMax: 120
+    };
+
+    if (contentEl && cursorEl) {
+      cursorEl.textContent = textTypeOptions.cursorCharacter;
+
+      if (window.gsap) {
+        cursorEl.style.animation = 'none';
+        window.gsap.set(cursorEl, { opacity: 1 });
+        window.gsap.to(cursorEl, {
+          opacity: 0,
+          duration: textTypeOptions.cursorBlinkDuration,
+          repeat: -1,
+          yoyo: true,
+          ease: 'power2.inOut'
+        });
+      }
+
+      let currentTextIndex = 0;
+      let currentCharIndex = 0;
+      let isDeleting = false;
+
+      const getTypingDelay = () => {
+        if (!textTypeOptions.variableSpeedEnabled) {
+          return textTypeOptions.typingSpeed;
+        }
+
+        const min = textTypeOptions.variableSpeedMin;
+        const max = textTypeOptions.variableSpeedMax;
+        return Math.random() * (max - min) + min;
+      };
+
+      const typeTick = () => {
+        const currentText = textTypeOptions.texts[currentTextIndex] || '';
+
+        if (!isDeleting) {
+          if (currentCharIndex < currentText.length) {
+            currentCharIndex += 1;
+            contentEl.textContent = currentText.slice(0, currentCharIndex);
+            setTimeout(typeTick, getTypingDelay());
+            return;
+          }
+
+          if (!textTypeOptions.loop && currentTextIndex === textTypeOptions.texts.length - 1) {
+            return;
+          }
+
+          isDeleting = true;
+          setTimeout(typeTick, textTypeOptions.pauseDuration);
+          return;
+        }
+
+        if (currentCharIndex > 0) {
+          currentCharIndex -= 1;
+          contentEl.textContent = currentText.slice(0, currentCharIndex);
+          setTimeout(typeTick, textTypeOptions.deletingSpeed);
+          return;
+        }
+
+        isDeleting = false;
+        currentTextIndex = (currentTextIndex + 1) % textTypeOptions.texts.length;
+        setTimeout(typeTick, 120);
+      };
+
+      setTimeout(typeTick, textTypeOptions.initialDelay);
+    }
+  }
+
   // ── Page Transition ──
   const overlay = document.getElementById('pageTransition');
   if (overlay) {
@@ -110,52 +188,100 @@
     });
   }
 
-  // ── Crisis Module Interactions ──
-  window.toggleModule = function(modId) {
-    const card = document.getElementById(modId);
-    if (!card) return;
-    const isExpanded = card.classList.contains('expanded');
-    card.classList.toggle('expanded', !isExpanded);
-    card.classList.toggle('active', !isExpanded);
-    const statusEl = card.querySelector('.module-status');
-    if (!card.classList.contains('active')) {
-      statusEl.textContent = 'STANDBY';
-      statusEl.className = 'module-status status-standby';
-    } else {
-      statusEl.textContent = 'ACTIVE SIMULATION';
-      statusEl.className = 'module-status status-active';
-      // Trigger API call when switching to a new module
-      if (window.onUserInput) window.onUserInput();
+  // ── Sidebar Collapse ──
+  const sidebar = document.querySelector('.panel-left');
+  const sidebarToggle = document.getElementById('sidebarToggle');
+  const scenarioCards = Array.from(document.querySelectorAll('.scenario-card'));
+  let isSidebarOpen = localStorage.getItem('dashboardSidebarOpen');
+  isSidebarOpen = isSidebarOpen === null ? true : isSidebarOpen === 'true';
+
+  function setSidebarState(open) {
+    isSidebarOpen = open;
+    if (sidebar) {
+      sidebar.classList.toggle('collapsed', !open);
     }
-  };
+    if (sidebarToggle) {
+      sidebarToggle.setAttribute('aria-pressed', String(!open));
+      sidebarToggle.setAttribute('aria-label', open ? 'Collapse sidebar' : 'Expand sidebar');
+      sidebarToggle.textContent = open ? '☰' : '›';
+    }
+    localStorage.setItem('dashboardSidebarOpen', String(open));
+  }
 
-  // Slider value updates
-  document.querySelectorAll('input[type="range"]').forEach(slider => {
-    slider.addEventListener('input', (e) => {
-      const valEl = e.target.parentElement.querySelector('.control-val');
-      if (valEl) valEl.textContent = e.target.value + '%';
+  if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+      setSidebarState(!isSidebarOpen);
     });
-    // Trigger API call on slider change
-    slider.addEventListener('change', () => {
-       if (window.onUserInput) window.onUserInput();
-    });
-  });
+  }
 
-  // Duration buttons
-  document.querySelectorAll('.duration-selector .dur-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.target.parentElement.querySelectorAll('.dur-btn').forEach(s => s.classList.remove('active'));
-      e.target.classList.add('active');
-    });
-  });
+  setSidebarState(isSidebarOpen);
 
-  // Mode buttons
-  document.querySelectorAll('.mode-toggle .mode-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.target.parentElement.querySelectorAll('.mode-btn').forEach(s => s.classList.remove('active'));
-      e.target.classList.add('active');
+  // ── Delayed AI Panel Reveal ──
+  const aiPanel = document.querySelector('.ai-panel');
+  if (aiPanel) {
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        aiPanel.classList.add('visible');
+        aiPanel.setAttribute('aria-hidden', 'false');
+      }, 1700);
     });
-  });
+  }
+
+    // ── Left Panel Navigation ──
+    const panelScroll = document.getElementById('leftPanelScroll');
+    const panelTabs = Array.from(document.querySelectorAll('.command-tab'));
+    const panelViews = Array.from(document.querySelectorAll('.panel-view'));
+    let activeTab = null;
+
+    function setPanelView(viewName) {
+      activeTab = viewName;
+      panelTabs.forEach(tab => {
+        const isActive = tab.dataset.panelView === viewName;
+        tab.classList.toggle('active', isActive);
+        tab.setAttribute('aria-selected', String(isActive));
+      });
+
+      panelViews.forEach(view => {
+        const isActive = view.dataset.panelView === viewName;
+        view.classList.toggle('active', isActive);
+        view.hidden = !isActive;
+      });
+
+      if (panelScroll) {
+        panelScroll.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+
+    if (panelTabs.length && panelViews.length) {
+      panelTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          setPanelView(tab.dataset.panelView);
+        });
+      });
+
+      setPanelView(null);
+    }
+
+    scenarioCards.forEach(card => {
+      const selectCard = () => {
+        scenarioCards.forEach(c => {
+          c.classList.remove('selected');
+          const dot = c.querySelector('.scenario-dot');
+          if (dot) dot.classList.remove('active');
+        });
+        card.classList.add('selected');
+        const dot = card.querySelector('.scenario-dot');
+        if (dot) dot.classList.add('active');
+      };
+
+      card.addEventListener('click', selectCard);
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectCard();
+        }
+      });
+    });
 
   // ── Run Simulation Button ──
   const runBtn = document.getElementById('runSimBtn');
@@ -200,24 +326,57 @@
 
   // City nodes (made globally available for the API updater)
   window.nodes = [
-    { id: 'delhi',     label: 'NCR (DELHI)',  x: 0.48, y: 0.26, state: 'critical', status: 'VOLTAGE CRIT', demand: '48.2 GW', supply: '41.0 GW' },
-    { id: 'mumbai',    label: 'MUMBAI HUB',   x: 0.35, y: 0.55, state: 'stable',   status: 'OPERATIONAL',  demand: '32.4 GW', supply: '33.1 GW' },
-    { id: 'bengaluru', label: 'BENGALURU',    x: 0.45, y: 0.75, state: 'warning',  status: 'PEAK LOAD',    demand: '22.8 GW', supply: '20.5 GW' },
-    { id: 'kolkata',   label: 'KOLKATA LINK', x: 0.70, y: 0.44, state: 'stable',   status: 'OPERATIONAL',  demand: '21.3 GW', supply: '22.1 GW' },
-    { id: 'chennai',   label: 'CHENNAI GRID', x: 0.54, y: 0.78, state: 'stable',   status: 'OPERATIONAL',  demand: '18.6 GW', supply: '19.2 GW' },
-    { id: 'hyderabad', label: 'HYDERABAD',    x: 0.52, y: 0.60, state: 'stable',   status: 'OPERATIONAL',  demand: '19.2 GW', supply: '19.8 GW' },
+    { id: 'ludhiana',      label: 'LUDHIANA',      x: 0.46, y: 0.22, labelDx: -96, labelDy: -8,  state: 'stable',   status: 'OPERATIONAL', demand: '7.6 GW',  supply: '8.0 GW' },
+    { id: 'delhi',         label: 'NEW DELHI',     x: 0.50, y: 0.27, labelDx: 16,  labelDy: -18, state: 'critical', status: 'VOLTAGE CRIT', demand: '48.2 GW', supply: '41.0 GW' },
+    { id: 'jaipur',        label: 'JAIPUR',        x: 0.45, y: 0.31, labelDx: -78, labelDy: 0,   state: 'stable',   status: 'OPERATIONAL', demand: '11.2 GW', supply: '11.9 GW' },
+    { id: 'agra',          label: 'AGRA',          x: 0.51, y: 0.31, labelDx: -56, labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '8.2 GW',  supply: '8.8 GW' },
+    { id: 'kanpur',        label: 'KANPUR',        x: 0.55, y: 0.33, labelDx: -56, labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '9.4 GW',  supply: '9.9 GW' },
+    { id: 'lucknow',       label: 'LUCKNOW',       x: 0.58, y: 0.33, labelDx: 12,  labelDy: 8,   state: 'stable',   status: 'OPERATIONAL', demand: '10.8 GW', supply: '11.4 GW' },
+    { id: 'patna',         label: 'PATNA',         x: 0.64, y: 0.35, labelDx: 12,  labelDy: 8,   state: 'stable',   status: 'OPERATIONAL', demand: '8.7 GW',  supply: '9.1 GW' },
+    { id: 'guwahati',      label: 'GUWAHATI',      x: 0.77, y: 0.36, labelDx: 10,  labelDy: 0,   state: 'stable',   status: 'OPERATIONAL', demand: '7.1 GW',  supply: '7.7 GW' },
+    { id: 'ahmedabad',     label: 'AHMEDABAD',     x: 0.37, y: 0.43, labelDx: -98, labelDy: 0,   state: 'stable',   status: 'OPERATIONAL', demand: '13.7 GW', supply: '14.4 GW' },
+    { id: 'surat',         label: 'SURAT',         x: 0.37, y: 0.49, labelDx: -74, labelDy: 8,   state: 'stable',   status: 'OPERATIONAL', demand: '10.9 GW', supply: '11.6 GW' },
+    { id: 'indore',        label: 'INDORE',        x: 0.47, y: 0.43, labelDx: -70, labelDy: 8,   state: 'stable',   status: 'OPERATIONAL', demand: '9.8 GW',  supply: '10.5 GW' },
+    { id: 'bhopal',        label: 'BHOPAL',        x: 0.53, y: 0.46, labelDx: -62, labelDy: 8,   state: 'stable',   status: 'OPERATIONAL', demand: '9.4 GW',  supply: '10.0 GW' },
+    { id: 'mumbai',        label: 'MUMBAI',        x: 0.39, y: 0.57, labelDx: -68, labelDy: 8,   state: 'warning',  status: 'HEAVY LOAD',  demand: '32.4 GW', supply: '33.1 GW' },
+    { id: 'nasik',         label: 'NASIK',         x: 0.44, y: 0.54, labelDx: -62, labelDy: 8,   state: 'stable',   status: 'OPERATIONAL', demand: '8.9 GW',  supply: '9.5 GW' },
+    { id: 'pune',          label: 'PUNE',          x: 0.44, y: 0.60, labelDx: -54, labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '14.1 GW', supply: '14.9 GW' },
+    { id: 'nagpur',        label: 'NAGPUR',        x: 0.56, y: 0.54, labelDx: -64, labelDy: 10,  state: 'warning',  status: 'LOAD WATCH',  demand: '10.1 GW', supply: '10.6 GW' },
+    { id: 'hyderabad',     label: 'HYDERABAD',     x: 0.54, y: 0.64, labelDx: -64, labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '19.2 GW', supply: '19.8 GW' },
+    { id: 'visakhapatnam', label: 'VISAKHAPATNAM', x: 0.62, y: 0.64, labelDx: -40, labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '11.0 GW', supply: '11.8 GW' },
+    { id: 'bengaluru',     label: 'BENGALURU',     x: 0.50, y: 0.78, labelDx: -76, labelDy: 10,  state: 'warning',  status: 'PEAK LOAD',   demand: '22.8 GW', supply: '20.5 GW' },
+    { id: 'chennai',       label: 'CHENNAI',       x: 0.56, y: 0.78, labelDx: 10,  labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '18.6 GW', supply: '19.2 GW' },
+    { id: 'coimbatore',    label: 'COIMBATORE',    x: 0.52, y: 0.86, labelDx: -76, labelDy: 10,  state: 'stable',   status: 'OPERATIONAL', demand: '8.4 GW',  supply: '8.9 GW' },
   ];
   const nodes = window.nodes;
 
   // Edges
   const edges = [
-    ['delhi', 'mumbai'],
-    ['delhi', 'kolkata'],
-    ['mumbai', 'hyderabad'],
+    ['ludhiana', 'delhi'],
+    ['delhi', 'jaipur'],
+    ['delhi', 'agra'],
+    ['agra', 'kanpur'],
+    ['kanpur', 'lucknow'],
+    ['lucknow', 'patna'],
+    ['patna', 'kolkata'],
+    ['patna', 'guwahati'],
+    ['jaipur', 'ahmedabad'],
+    ['ahmedabad', 'surat'],
+    ['surat', 'mumbai'],
+    ['mumbai', 'nasik'],
+    ['nasik', 'pune'],
+    ['indore', 'ahmedabad'],
+    ['indore', 'bhopal'],
+    ['bhopal', 'nagpur'],
+    ['nagpur', 'hyderabad'],
+    ['hyderabad', 'visakhapatnam'],
     ['hyderabad', 'bengaluru'],
-    ['hyderabad', 'chennai'],
     ['bengaluru', 'chennai'],
-    ['kolkata', 'hyderabad'],
+    ['bengaluru', 'coimbatore'],
+    ['chennai', 'visakhapatnam'],
+    ['delhi', 'mumbai'],
+    ['mumbai', 'hyderabad'],
+    ['delhi', 'kolkata'],
   ];
 
   function getColor(state) {
@@ -237,7 +396,7 @@
   // Moving packets along edges
   const packets = [];
   function maybeSpawn() {
-    if (Math.random() > 0.025) return;
+    if (Math.random() > 0.018) return;
     const edge = edges[Math.floor(Math.random() * edges.length)];
     const src = findNode(edge[0]);
     const dst = findNode(edge[1]);
@@ -330,8 +489,8 @@
       ctx.strokeRect(x - r, y - r, r * 2, r * 2);
 
       // Label box
-      const lx = x + r + 8;
-      const ly = y - 12;
+      const lx = x + (typeof n.labelDx === 'number' ? n.labelDx : (r + 8));
+      const ly = y + (typeof n.labelDy === 'number' ? n.labelDy : -12);
       const bW = 86, bH = 24;
       ctx.fillStyle = 'rgba(6,10,18,0.82)';
       ctx.fillRect(lx, ly, bW, bH);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Resilio Bharat — Dashboard</title>
+  <title>BHARAT RESILIENCE — Dashboard</title>
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="stylesheet" href="css/dashboard.css" />
 </head>
@@ -19,23 +19,14 @@
   <header class="dash-topbar">
     <div class="topbar-left">
       <div class="topbar-brand">
-        <span class="brand-text">BHARAT<span class="brand-accent">RE</span></span>
-      </div>
-      <div class="topbar-metrics">
-        <div class="metric">
-          <span class="metric-label">ENERGY:</span>
-          <span class="metric-value">145 GW</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">SUPPLY:</span>
-          <span class="metric-value">142 GW</span>
-        </div>
-        <div class="metric">
-          <span class="metric-label">DEFICIT:</span>
-          <span class="metric-value deficit-critical">2.1%</span>
-        </div>
+        <span class="brand-text">BR<span class="brand-accent">S</span></span>
       </div>
     </div>
+
+    <h1 class="topbar-title" id="topbarTitle" aria-live="polite">
+      <span class="text-type__content">BHARAT RESILIENCE</span>
+      <span class="text-type__cursor" aria-hidden="true">_</span>
+    </h1>
     
     <div class="topbar-right">
       <div class="status-indicator critical">
@@ -58,129 +49,136 @@
   <main class="dash-main">
     
     <!-- === LEFT PANEL (Crisis Control) === -->
-    <aside class="panel-left">
+    <aside class="panel-left sidebar">
       <div class="panel-header">
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Collapse sidebar" aria-pressed="false">☰</button>
         <svg class="panel-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
         <h3>CRISIS CONTROL PANEL</h3>
       </div>
 
-      <!-- Mode Toggle -->
-      <div class="mode-toggle">
-        <button class="mode-btn">SINGLE MODE</button>
-        <button class="mode-btn active">MULTI-CRISIS MODE</button>
+      <div class="panel-scroll sidebar-content" id="leftPanelScroll">
+        <section class="command-launch-top" aria-label="Command launch controls">
+          <div class="command-launch-head">
+            <span class="section-kicker">Command Launch</span>
+          </div>
+
+          <div class="command-tabs" role="tablist" aria-label="Panel views">
+            <button type="button" class="command-tab" data-panel-view="dashboard" role="tab" aria-selected="false">Dashboard</button>
+            <button type="button" class="command-tab" data-panel-view="analytics" role="tab" aria-selected="false">Analytics</button>
+            <button type="button" class="command-tab" data-panel-view="settings" role="tab" aria-selected="false">Settings</button>
+          </div>
+        </section>
+
+        <div class="panel-content-wrap">
+          <div class="panel-views">
+            <section class="panel-view" data-panel-view="dashboard" aria-label="Crisis scenarios" hidden>
+              <div class="scenario-list" id="scenarioList">
+                <article class="scenario-card selected" data-scenario="power" data-severity="85" tabindex="0">
+                  <div class="scenario-card-icon icon-power"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+                  <div class="scenario-card-content">
+                    <h4>Power Shortage</h4>
+                    <p>Northern grid load stress detected.</p>
+                  </div>
+                  <span class="scenario-dot active"></span>
+                </article>
+                <article class="scenario-card" data-scenario="water" data-severity="50" tabindex="0">
+                  <div class="scenario-card-icon icon-water"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
+                  <div class="scenario-card-content">
+                    <h4>Water Management</h4>
+                    <p>Reservoir variance monitoring active.</p>
+                  </div>
+                  <span class="scenario-dot"></span>
+                </article>
+                <article class="scenario-card" data-scenario="fuel" data-severity="30" tabindex="0">
+                  <div class="scenario-card-icon icon-fuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                  <div class="scenario-card-content">
+                    <h4>Fuel Shortage</h4>
+                    <p>Depot and logistics pressure rising.</p>
+                  </div>
+                  <span class="scenario-dot"></span>
+                </article>
+                <article class="scenario-card" data-scenario="cyber" data-severity="40" tabindex="0">
+                  <div class="scenario-card-icon icon-cyber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                  <div class="scenario-card-content">
+                    <h4>Cyber Attack</h4>
+                    <p>SCADA signal integrity checks enabled.</p>
+                  </div>
+                  <span class="scenario-dot"></span>
+                </article>
+              </div>
+            </section>
+
+            <section class="panel-view" data-panel-view="analytics" aria-label="Analytics summary" hidden>
+              <div class="analytics-grid">
+                <article class="analytics-card">
+                  <span class="overview-label">COVERAGE</span>
+                  <strong>28 States</strong>
+                  <span class="overview-value">Resilience mapped</span>
+                </article>
+                <article class="analytics-card">
+                  <span class="overview-label">DOMAIN MIX</span>
+                  <strong>4 Crisis Layers</strong>
+                  <span class="overview-value">Power, water, fuel, cyber</span>
+                </article>
+                <article class="analytics-card">
+                  <span class="overview-label">ALERT LOAD</span>
+                  <strong>2 Critical</strong>
+                  <span class="overview-value">Requires attention</span>
+                </article>
+              </div>
+
+              <div class="analytics-card analytics-card-wide">
+                <span class="section-kicker">Live Trend</span>
+                <h4>Signal strength remains stable across the active scenario.</h4>
+                <div class="analytics-bars">
+                  <div class="analytics-bar-row"><span>Power</span><div><i style="width: 85%"></i></div></div>
+                  <div class="analytics-bar-row"><span>Water</span><div><i style="width: 78%"></i></div></div>
+                  <div class="analytics-bar-row"><span>Fuel</span><div><i style="width: 62%"></i></div></div>
+                  <div class="analytics-bar-row"><span>Cyber</span><div><i style="width: 70%"></i></div></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel-view" data-panel-view="settings" aria-label="Panel settings" hidden>
+              <div class="settings-list">
+                <button type="button" class="setting-row">
+                  <span>
+                    <strong>Compact Density</strong>
+                    <small>Tighten card spacing for smaller screens</small>
+                  </span>
+                  <span class="setting-state on">ON</span>
+                </button>
+                <button type="button" class="setting-row">
+                  <span>
+                    <strong>Motion Reduction</strong>
+                    <small>Lower ambient animation intensity</small>
+                  </span>
+                  <span class="setting-state off">AUTO</span>
+                </button>
+                <button type="button" class="setting-row">
+                  <span>
+                    <strong>Data Refresh</strong>
+                    <small>Keep backend recommendations live</small>
+                  </span>
+                  <span class="setting-state on">ON</span>
+                </button>
+              </div>
+
+              <div class="settings-links-card">
+                <a href="#">Settings</a>
+                <a href="#">Logs</a>
+                <a href="#">Support</a>
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
 
-      <!-- Modules List -->
-      <div class="modules-list">
-        
-        <!-- Module 1: Power (Active & Expanded) -->
-        <div class="module-card active expanded" id="modPower">
-          <div class="module-header" onclick="toggleModule('modPower')">
-            <div class="module-icon mod-saffron"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-            <div class="module-title-wrap">
-              <span class="module-title">POWER SHORTAGE</span>
-              <span class="module-status status-active">ACTIVE SIMULATION</span>
-            </div>
-            <div class="module-indicator"></div>
-          </div>
-          <div class="module-body">
-            <p class="module-desc">Simulating cascading failure across Northern and Eastern grids.</p>
-            <div class="control-group">
-              <div class="control-label">
-                <span>INTENSITY</span>
-                <span class="control-val saffron">85%</span>
-              </div>
-              <input type="range" class="slider slider-saffron" min="0" max="100" value="85">
-            </div>
-            <div class="control-group">
-              <div class="control-label">
-                <span>DURATION</span>
-              </div>
-              <div class="duration-selector">
-                <button class="dur-btn">12H</button>
-                <button class="dur-btn active">24H</button>
-                <button class="dur-btn">48H</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Module 2: Water -->
-        <div class="module-card" id="modWater">
-          <div class="module-header" onclick="toggleModule('modWater')">
-            <div class="module-icon mod-dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg></div>
-            <div class="module-title-wrap">
-              <span class="module-title">WATER MANAGEMENT</span>
-              <span class="module-status status-standby">STANDBY</span>
-            </div>
-            <div class="module-indicator"></div>
-          </div>
-          <div class="module-body" style="display: none;">
-            <p class="module-desc">Model reservoir levels and purification capacity.</p>
-            <div class="control-group">
-              <div class="control-label"><span>INTENSITY</span><span class="control-val blue">50%</span></div>
-              <input type="range" class="slider slider-blue" min="0" max="100" value="50">
-            </div>
-            <div class="control-group">
-              <div class="duration-selector">
-                <button class="dur-btn active">12H</button>
-                <button class="dur-btn">24H</button>
-                <button class="dur-btn">48H</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Module 3: Fuel -->
-        <div class="module-card" id="modFuel">
-          <div class="module-header" onclick="toggleModule('modFuel')">
-            <div class="module-icon mod-dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg></div>
-            <div class="module-title-wrap">
-              <span class="module-title">FUEL SHORTAGE</span>
-              <span class="module-status status-standby">STANDBY</span>
-            </div>
-            <div class="module-indicator"></div>
-          </div>
-          <div class="module-body" style="display: none;">
-            <p class="module-desc">Coordinate supply chains and depot allocation.</p>
-            <div class="control-group">
-              <div class="control-label"><span>INTENSITY</span><span class="control-val green">30%</span></div>
-              <input type="range" class="slider slider-green" min="0" max="100" value="30">
-            </div>
-          </div>
-        </div>
-
-        <!-- Module 4: Cyber -->
-        <div class="module-card" id="modCyber">
-          <div class="module-header" onclick="toggleModule('modCyber')">
-            <div class="module-icon mod-dim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-            <div class="module-title-wrap">
-              <span class="module-title">CYBER ATTACK</span>
-              <span class="module-status status-standby">STANDBY</span>
-            </div>
-            <div class="module-indicator"></div>
-          </div>
-          <div class="module-body" style="display: none;">
-            <p class="module-desc">Simulate attacks on SCADA and telecom networks.</p>
-            <div class="control-group">
-              <div class="control-label"><span>INTENSITY</span><span class="control-val red">0%</span></div>
-              <input type="range" class="slider slider-danger" min="0" max="100" value="0">
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Action Area -->
-      <div class="panel-bottom">
+      <div class="panel-run-sim-sticky sidebar-footer">
         <button class="btn-run-sim" id="runSimBtn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           RUN SIMULATION
         </button>
-        <div class="panel-footer-links">
-          <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> SETTINGS</a>
-          <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg> LOGS</a>
-        </div>
       </div>
     </aside>
 
@@ -203,28 +201,10 @@
         <span>SIMULATING…</span>
       </div>
 
-      <!-- === BOTTOM TIMELINE SECTION === -->
-      <div class="timeline-section">
-        <div class="timeline-header">
-          <span class="timeline-title">TIMELINE ANALYSIS (T+0:00)</span>
-          <span class="timeline-end">T+24:00</span>
-        </div>
-        <div class="timeline-track">
-          <div class="timeline-progress" style="width: 25%"></div>
-          <div class="timeline-handle" style="left: 25%">
-            <div class="timeline-time-badge">07:14:22</div>
-          </div>
-        </div>
-        <div class="timeline-logs">
-          <div class="log-item"><span class="dot green"></span> SECURE: SOUTHERN GRID SYNCED</div>
-          <div class="log-item"><span class="dot saffron"></span> ALERT: NORTHERN GRID VOLTAGE DROP (-8.2%)</div>
-          <div class="log-item"><span class="dot white"></span> INFO: RENEWABLE FEED-IN: 22%</div>
-        </div>
-      </div>
     </section>
 
     <!-- === RIGHT PANEL (AI Recommendations) === -->
-    <aside class="panel-right">
+    <aside class="panel-right ai-panel" aria-hidden="true">
       <div class="panel-header">
         <div class="ai-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 0 1 10 10c0 5.5-4.5 10-10 10S2 17.5 2 12 6.5 2 12 2Z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg></div>
         <div class="ai-header-text">
@@ -277,6 +257,7 @@
 
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
   <script src="js/dashboard.js"></script>
 </body>
 </html>
