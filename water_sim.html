@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BRE — Water Crisis Simulation</title>
+<meta name="description" content="Regional Reservoir Status — Water Crisis simulation with ML-powered demand forecasting."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "outline-variant": "#46464c",
+                    "on-primary-fixed-variant": "#6d3a00",
+                    "on-error-container": "#ffdad6",
+                    "secondary-container": "#078200",
+                    "surface-container-highest": "#313442",
+                    "on-surface-variant": "#c7c6cc",
+                    "tertiary": "#c6c6c7",
+                    "surface-container-high": "#262a37",
+                    "inverse-primary": "#8f4e00",
+                    "surface-container": "#1b1f2c",
+                    "on-primary": "#4c2700",
+                    "error-container": "#93000a",
+                    "error": "#ffb4ab",
+                    "outline": "#909096",
+                    "on-background": "#dfe2f3",
+                    "primary-fixed": "#ffdcc2",
+                    "primary-fixed-dim": "#ffb77a",
+                    "surface-dim": "#0f131f",
+                    "surface-container-low": "#171b28",
+                    "background": "#0f131f",
+                    "tertiary-container": "#0d0f0f",
+                    "surface-container-lowest": "#0a0e1a",
+                    "surface": "#0f131f",
+                    "on-surface": "#dfe2f3",
+                    "on-secondary-container": "#d9ffc9",
+                    "secondary": "#72de5c",
+                    "surface-bright": "#353946",
+                    "on-primary-container": "#b96600",
+                    "surface-tint": "#ffb77a",
+                    "on-secondary": "#023a00",
+                    "on-error": "#690005",
+                    "surface-variant": "#313442",
+                    "primary": "#ffb77a",
+                    "on-primary-fixed": "#2e1500"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "0px"
+                },
+                "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+                }
+            },
+        },
+    }
+</script>
+<style>
+    .pixel-grid {
+        background-image: linear-gradient(to right, rgba(144,144,150,0.05) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(144,144,150,0.05) 1px, transparent 1px);
+        background-size: 8px 8px;
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    body { overflow-x: hidden; }
+    /* Loading overlay */
+    .sim-overlay {
+        position: fixed; inset: 0; z-index: 999;
+        background: rgba(10,14,26,0.95);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 16px;
+        transition: opacity 0.5s;
+    }
+    .sim-overlay.hidden { opacity: 0; pointer-events: none; }
+    .sim-overlay .spinner {
+        width: 40px; height: 40px;
+        border: 3px solid #313442; border-top-color: #1a6eb5;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Tank fill animation */
+    .tank-fill { transition: height 1.2s cubic-bezier(0.4,0,0.2,1); }
+    /* Evaporation sparkline bars */
+    .evap-bar { transition: height 0.8s ease-out; }
+    /* Water ripple */
+    @keyframes ripple {
+        0% { transform: translateY(0); }
+        50% { transform: translateY(-2px); }
+        100% { transform: translateY(0); }
+    }
+    .water-ripple { animation: ripple 2s ease-in-out infinite; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #46464c; }
+</style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary selection:text-on-primary-container">
+
+<!-- Simulation Loading Overlay -->
+<div class="sim-overlay" id="simOverlay">
+    <div class="spinner"></div>
+    <span class="font-headline text-xs tracking-[0.2em] text-[#1a6eb5] uppercase">Running Water Demand Forecast Model…</span>
+    <span class="text-[10px] text-outline font-mono">ANALYZING REGIONAL RESERVOIR TELEMETRY</span>
+</div>
+
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 right-0 h-16 z-50 flex justify-between items-center px-4 bg-surface-container-lowest border-none">
+    <div class="flex items-center gap-6">
+        <a href="/dashboard" class="flex items-center gap-2 hover:opacity-80">
+            <span class="material-symbols-outlined text-sm text-outline">arrow_back</span>
+        </a>
+        <h1 class="font-headline font-bold tracking-tighter text-xl text-primary">BHARAT RESILIENCE ENGINE</h1>
+        <div class="hidden md:flex items-center gap-2 px-3 py-1 border" id="statusBadge">
+            <span class="material-symbols-outlined text-sm" id="statusIcon" style="font-variation-settings: 'FILL' 1;">warning</span>
+            <span class="font-label text-xs font-bold tracking-widest uppercase" id="statusText">WATER STATUS: SCANNING…</span>
+        </div>
+    </div>
+    <div class="flex items-center gap-4">
+        <div class="hidden md:flex bg-surface-container p-2 items-center gap-2">
+            <span class="material-symbols-outlined text-on-surface-variant text-sm">search</span>
+            <input class="bg-transparent border-none focus:ring-0 text-xs font-label uppercase tracking-widest w-48 text-primary" placeholder="COORD SEARCH..." type="text"/>
+        </div>
+        <a href="/dashboard" class="material-symbols-outlined text-primary cursor-pointer hover:bg-primary hover:text-surface-container-lowest p-2 transition-none">dashboard</a>
+        <span class="material-symbols-outlined text-primary cursor-pointer hover:bg-primary hover:text-surface-container-lowest p-2 transition-none">settings</span>
+    </div>
+</header>
+
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-16 bottom-0 w-64 z-40 flex flex-col p-4 bg-surface-container-lowest border-r-8 border-surface-container">
+    <div class="mb-8 border-b-4 border-surface-container pb-4">
+        <div class="text-lg font-black text-primary font-headline uppercase tracking-widest">SCENARIO CMD</div>
+        <div class="text-[10px] font-label text-on-surface-variant tracking-[0.2em] mt-1 uppercase">SOVEREIGN COMMAND v1.0</div>
+    </div>
+    <div class="flex flex-col flex-grow">
+        <a class="bg-primary text-surface-container-lowest font-bold p-3 mb-2 flex items-center gap-3 font-label text-xs tracking-widest transition-none" href="#">
+            <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">water_drop</span>
+            WATER FAILURE
+        </a>
+        <a class="text-tertiary p-3 mb-2 flex items-center gap-3 hover:bg-surface-container font-label text-xs tracking-widest transition-none" href="/dashboard">
+            <span class="material-symbols-outlined">electric_bolt</span>
+            POWER GRID
+        </a>
+        <a class="text-tertiary p-3 mb-2 flex items-center gap-3 hover:bg-surface-container font-label text-xs tracking-widest transition-none" href="/cyber-sim">
+            <span class="material-symbols-outlined">shield</span>
+            CYBER ATTACK
+        </a>
+        <a class="text-tertiary p-3 mb-2 flex items-center gap-3 hover:bg-surface-container font-label text-xs tracking-widest transition-none" href="/dashboard">
+            <span class="material-symbols-outlined">oil_barrel</span>
+            FUEL CRISIS
+        </a>
+    </div>
+    <!-- Severity Control -->
+    <div class="mb-4">
+        <label class="text-[10px] text-outline tracking-[0.2em] block mb-2 font-label">CRISIS SEVERITY</label>
+        <input type="range" id="severitySlider" min="0" max="100" value="50"
+            class="w-full h-1 bg-surface-variant appearance-none cursor-pointer"
+            style="accent-color: #1a6eb5;">
+        <div class="flex justify-between text-[9px] text-outline mt-1 font-label">
+            <span>0%</span>
+            <span id="severityValue" class="text-[#1a6eb5] font-bold">50%</span>
+            <span>100%</span>
+        </div>
+    </div>
+    <div class="pt-4 border-t-4 border-surface-container">
+        <button id="rerunBtn" class="w-full bg-on-primary-container text-surface-container-lowest font-black p-4 mb-6 font-label text-xs tracking-widest hover:bg-primary transition-none flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">replay</span>
+            RE-RUN SIMULATION
+        </button>
+        <div class="flex flex-col gap-2">
+            <a class="flex items-center gap-3 text-tertiary p-2 hover:bg-surface-container transition-none" href="/dashboard">
+                <span class="material-symbols-outlined text-sm">dashboard</span>
+                <span class="font-label text-[10px] tracking-widest">DASHBOARD</span>
+            </a>
+            <a id="reportBtn" class="flex items-center gap-3 text-tertiary p-2 hover:bg-surface-container transition-none" href="#">
+                <span class="material-symbols-outlined text-sm">account_tree</span>
+                <span class="font-label text-[10px] tracking-widest">REPORTS</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content Area -->
+<main class="ml-64 mt-16 p-8 min-h-screen pixel-grid bg-surface-dim">
+    <!-- Header Section -->
+    <div class="mb-12 flex justify-between items-end">
+        <div>
+            <h2 class="font-headline text-4xl font-black text-on-surface tracking-tighter uppercase mb-2">Regional Reservoir Status</h2>
+            <div class="flex gap-4">
+                <div class="bg-surface-container-high px-3 py-1 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-secondary" id="nominalDot"></span>
+                    <span class="font-label text-[10px] tracking-widest text-on-surface-variant uppercase" id="nominalLabel">SYSTEMS NOMINAL</span>
+                </div>
+                <div class="bg-surface-container-high px-3 py-1 flex items-center gap-2">
+                    <span class="w-2 h-2 bg-primary animate-pulse"></span>
+                    <span class="font-label text-[10px] tracking-widest text-on-surface-variant uppercase">REAL-TIME TELEMETRY</span>
+                </div>
+            </div>
+        </div>
+        <div class="text-right">
+            <div class="font-label text-[10px] text-on-surface-variant tracking-widest uppercase mb-1">Last Update</div>
+            <div class="font-headline font-bold text-primary tracking-widest" id="lastUpdate">T-MINUS —</div>
+        </div>
+    </div>
+
+    <!-- Tank Grid — Dynamically populated -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8" id="tankGrid">
+        <!-- Tanks will be rendered by JS -->
+    </div>
+
+    <!-- Metrics Row -->
+    <div class="mt-12 grid grid-cols-4 gap-4" id="metricsRow">
+        <div class="bg-surface-container-low p-4 border border-outline-variant/10">
+            <div class="font-label text-[9px] text-on-surface-variant tracking-[0.2em] mb-2 uppercase">EVAPORATION RATE</div>
+            <div class="h-8 flex items-end gap-1" id="evapChart"></div>
+        </div>
+        <div class="bg-surface-container-low p-4 border border-outline-variant/10">
+            <div class="font-label text-[9px] text-on-surface-variant tracking-[0.2em] mb-2 uppercase">TOTAL ALLOCATED</div>
+            <div class="font-headline font-bold text-on-surface text-lg uppercase" id="totalAllocated">—</div>
+        </div>
+        <div class="bg-surface-container-low p-4 border border-outline-variant/10">
+            <div class="font-label text-[9px] text-on-surface-variant tracking-[0.2em] mb-2 uppercase">AFFECTED REGIONS</div>
+            <div class="font-headline font-bold text-on-surface text-sm uppercase" id="affectedRegions">—</div>
+        </div>
+        <div class="bg-surface-container-low p-4 border border-outline-variant/10 flex flex-col justify-between">
+            <div class="font-label text-[9px] text-on-surface-variant tracking-[0.2em] mb-2 uppercase">AI RECOMMENDATION</div>
+            <div class="text-[#1a6eb5] font-black font-label text-[10px] tracking-widest leading-relaxed" id="aiRecText">AWAITING DATA…</div>
+        </div>
+    </div>
+</main>
+
+<script>
+(function() {
+    'use strict';
+
+    const BASE_URL = window.location.origin || 'http://localhost:5001';
+
+    // Get severity from URL or default
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSeverity = parseInt(urlParams.get('severity')) || 50;
+    const severitySlider = document.getElementById('severitySlider');
+    severitySlider.value = initialSeverity;
+    document.getElementById('severityValue').textContent = initialSeverity + '%';
+
+    severitySlider.addEventListener('input', (e) => {
+        document.getElementById('severityValue').textContent = e.target.value + '%';
+    });
+
+    document.getElementById('rerunBtn').addEventListener('click', () => {
+        runSimulation(parseInt(severitySlider.value));
+    });
+
+    // ── Regional mapping for tanks ──
+    const REGIONS = [
+        { name: 'RAJASTHAN',    basePct: 38,  baseML: 142, coord: '26.9124° N, 70.9128° E', pipeline: 'INDIRA-CANAL_R7' },
+        { name: 'GUJARAT',      basePct: 62,  baseML: 388, coord: '23.0225° N, 72.5714° E', pipeline: 'NARMADA-PIPELINE_B4' },
+        { name: 'MAHARASHTRA',  basePct: 85,  baseML: 912, coord: '19.7515° N, 75.7139° E', pipeline: 'GODAVARI-TRUNK_M2' },
+    ];
+
+    async function runSimulation(severity) {
+        const overlay = document.getElementById('simOverlay');
+        overlay.classList.remove('hidden');
+        overlay.style.opacity = '1';
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/water`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ severity, total_nodes: 200 })
+            });
+            const data = await res.json();
+            console.log('Water ML response:', data);
+
+            setTimeout(() => {
+                renderResults(data, severity);
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 800);
+        } catch (err) {
+            console.error('Water API error:', err);
+            overlay.querySelector('span:first-of-type').textContent = 'CONNECTION FAILED';
+            overlay.querySelector('span:last-of-type').textContent = err.message;
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 2000);
+        }
+    }
+
+    function renderResults(data, severity) {
+        const allocation = data.allocation || {};
+        const affectedStates = data.affected_states || [];
+        const totalAllocated = data.total_allocated || 0;
+        const recommendation = data.recommendation || 'Monitor situation.';
+        const available = data.available_units || (100 - severity);
+
+        // Update status badge
+        const badge = document.getElementById('statusBadge');
+        const statusText = document.getElementById('statusText');
+        const statusIcon = document.getElementById('statusIcon');
+        if (severity >= 60) {
+            badge.className = 'hidden md:flex items-center gap-2 px-3 py-1 bg-error-container border border-error';
+            statusText.className = 'font-label text-xs font-bold tracking-widest text-error uppercase';
+            statusIcon.className = 'material-symbols-outlined text-error text-sm';
+            statusText.textContent = 'WATER STATUS: CRITICAL';
+        } else if (severity >= 30) {
+            badge.className = 'hidden md:flex items-center gap-2 px-3 py-1 border border-primary';
+            statusText.className = 'font-label text-xs font-bold tracking-widest text-primary uppercase';
+            statusIcon.className = 'material-symbols-outlined text-primary text-sm';
+            statusText.textContent = 'WATER STATUS: WARNING';
+        } else {
+            badge.className = 'hidden md:flex items-center gap-2 px-3 py-1 border border-secondary';
+            statusText.className = 'font-label text-xs font-bold tracking-widest text-secondary uppercase';
+            statusIcon.className = 'material-symbols-outlined text-secondary text-sm';
+            statusText.textContent = 'WATER STATUS: SAFE';
+        }
+
+        // Nominal indicator
+        const nomDot = document.getElementById('nominalDot');
+        const nomLabel = document.getElementById('nominalLabel');
+        if (severity >= 60) {
+            nomDot.className = 'w-2 h-2 bg-error animate-pulse';
+            nomLabel.textContent = 'SYSTEMS CRITICAL';
+        } else if (severity >= 30) {
+            nomDot.className = 'w-2 h-2 bg-primary animate-pulse';
+            nomLabel.textContent = 'SYSTEMS DEGRADED';
+        } else {
+            nomDot.className = 'w-2 h-2 bg-secondary';
+            nomLabel.textContent = 'SYSTEMS NOMINAL';
+        }
+
+        // Last update
+        document.getElementById('lastUpdate').textContent = 'T-MINUS ' +
+            new Date().toLocaleTimeString('en-US', { hour12: false });
+
+        // ── Render Reservoir Tanks ──
+        const grid = document.getElementById('tankGrid');
+        grid.innerHTML = '';
+
+        // Distribute allocation across regions based on severity
+        const allocKeys = Object.keys(allocation);
+        REGIONS.forEach((region, idx) => {
+            // Calculate fill percentage based on severity
+            const fillPct = Math.max(5, Math.min(100, region.basePct - (severity * 0.6) + (Math.random() * 10)));
+            const dailyML = Math.max(20, Math.floor(region.baseML * (fillPct / region.basePct)));
+
+            // Determine status
+            let status, statusColor, borderColor, cornerColor;
+            if (fillPct < 30) {
+                status = 'CRITICAL'; statusColor = 'text-error'; borderColor = 'border-error'; cornerColor = 'bg-error';
+            } else if (fillPct < 60) {
+                status = 'WARNING'; statusColor = 'text-primary'; borderColor = 'border-primary'; cornerColor = 'bg-primary';
+            } else {
+                status = 'SAFE'; statusColor = 'text-secondary'; borderColor = 'border-secondary'; cornerColor = 'bg-secondary';
+            }
+
+            // Get allocation amount for this region's state
+            const stateAlloc = allocKeys.length > idx ? allocation[allocKeys[idx]] : 0;
+
+            const tank = document.createElement('div');
+            tank.className = 'bg-surface-container p-6 relative';
+            tank.innerHTML = `
+                <div class="absolute top-0 right-0 w-4 h-4 ${cornerColor}"></div>
+                <h3 class="font-headline font-bold text-lg text-primary tracking-widest mb-2 border-b-2 border-surface-container-high pb-2">${region.name}</h3>
+                <div class="text-[9px] font-mono text-outline mb-4">
+                    ${region.coord} | ${region.pipeline}
+                    ${stateAlloc > 0 ? `<br/>ALLOCATION: ${stateAlloc.toFixed(1)} UNITS` : ''}
+                </div>
+                <div class="flex h-[320px] gap-4">
+                    <!-- Scale -->
+                    <div class="flex flex-col justify-between h-full py-1">
+                        <span class="font-label text-[10px] text-tertiary">100%</span>
+                        <span class="font-label text-[10px] text-tertiary">80%</span>
+                        <span class="font-label text-[10px] text-tertiary">60%</span>
+                        <span class="font-label text-[10px] text-tertiary">40%</span>
+                        <span class="font-label text-[10px] text-tertiary">20%</span>
+                        <span class="font-label text-[10px] text-tertiary">0%</span>
+                    </div>
+                    <!-- Tank Rect -->
+                    <div class="flex-grow bg-surface-container-lowest border-4 border-surface-container-high relative overflow-hidden">
+                        <div class="absolute bottom-0 left-0 right-0 bg-[#1a6eb5] tank-fill water-ripple" id="tank${idx}" style="height: 0%;"></div>
+                        <!-- Tick Marks -->
+                        <div class="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
+                            <div class="w-full h-[1px] bg-white"></div>
+                            <div class="w-full h-[1px] bg-white"></div>
+                            <div class="w-full h-[1px] bg-white"></div>
+                            <div class="w-full h-[1px] bg-white"></div>
+                            <div class="w-full h-[1px] bg-white"></div>
+                            <div class="w-full h-[1px] bg-white"></div>
+                        </div>
+                        <!-- Fill percentage label -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="font-headline font-black text-2xl text-white/80">${fillPct.toFixed(0)}%</span>
+                        </div>
+                    </div>
+                    <!-- Status Labels -->
+                    <div class="flex flex-col justify-between h-full relative w-20">
+                        <div class="absolute top-[30%] right-0">
+                            <span class="font-label text-[8px] bg-secondary text-surface-container-lowest px-1 font-bold">SAFE</span>
+                        </div>
+                        <div class="absolute top-[60%] right-0">
+                            <span class="font-label text-[8px] bg-primary text-surface-container-lowest px-1 font-bold">WARNING</span>
+                        </div>
+                        <div class="absolute top-[80%] right-0">
+                            <span class="font-label text-[8px] bg-error text-surface-container-lowest px-1 font-bold">CRITICAL</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 font-mono text-xs text-white uppercase tracking-widest bg-surface-container-lowest p-3 ${borderColor} border-l-4">
+                    <div class="mb-1 ${statusColor} font-black">STATUS: ${status}</div>
+                    AVAILABLE: ${dailyML} ML/DAY
+                </div>
+            `;
+            grid.appendChild(tank);
+
+            // Animate fill after DOM insertion
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    document.getElementById('tank' + idx).style.height = fillPct + '%';
+                }, 100 + idx * 200);
+            });
+        });
+
+        // ── Evaporation sparkline ──
+        const evapChart = document.getElementById('evapChart');
+        evapChart.innerHTML = '';
+        const heights = [2, 3, 5, 4, 6, 7, 5, 8].map(h => h * (severity / 50));
+        heights.forEach((h, i) => {
+            const bar = document.createElement('div');
+            bar.className = 'w-2 bg-error evap-bar';
+            bar.style.height = '0px';
+            evapChart.appendChild(bar);
+            setTimeout(() => { bar.style.height = Math.min(32, h * 4) + 'px'; }, 200 + i * 80);
+        });
+
+        // ── Metrics ──
+        document.getElementById('totalAllocated').textContent =
+            totalAllocated.toFixed(1) + ' UNITS';
+
+        const affRegions = document.getElementById('affectedRegions');
+        affRegions.textContent = affectedStates.slice(0, 4).join(', ');
+        if (affectedStates.length > 4) {
+            affRegions.textContent += ` +${affectedStates.length - 4} MORE`;
+        }
+
+        document.getElementById('aiRecText').textContent = recommendation.toUpperCase();
+
+        // ── Save to sessionStorage for Report page ──
+        sessionStorage.setItem('bre_sim_report', JSON.stringify({
+            scenario: 'water_management',
+            severity,
+            recommendation,
+            affected_states: affectedStates,
+            total_allocated: totalAllocated,
+            allocation,
+            available_units: available
+        }));
+
+        // ── Wire REPORTS button ──
+        const reportBtn = document.getElementById('reportBtn');
+        if (reportBtn) {
+            reportBtn.onclick = (e) => {
+                e.preventDefault();
+                window.location.href = '/report';
+            };
+        }
+    }
+
+    // ── Auto-run on load ──
+    runSimulation(initialSeverity);
+})();
+</script>
+</body></html>

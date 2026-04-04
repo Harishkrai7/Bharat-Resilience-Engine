@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>System Pulse | BHARAT RESILIENCE ENGINE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0A0E1A;
+            color: #dfe2f3;
+        }
+        .font-mono-tactical {
+            font-family: 'Space Mono', monospace;
+        }
+        .pixel-grid {
+            background-image: radial-gradient(circle, #46464c 1px, transparent 1px);
+            background-size: 16px 16px;
+            opacity: 0.05;
+        }
+        .flicker-on-click:active {
+            opacity: 0.5;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#dfe2f3",
+                        "background": "#0f131f",
+                        "surface-bright": "#353946",
+                        "surface-container-high": "#262a37",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#2e1500",
+                        "error-container": "#93000a",
+                        "tertiary-fixed-dim": "#c6c6c7",
+                        "secondary-fixed-dim": "#72de5c",
+                        "outline": "#909096",
+                        "on-tertiary-fixed": "#1a1c1c",
+                        "tertiary-fixed": "#e2e2e2",
+                        "surface": "#0f131f",
+                        "inverse-surface": "#dfe2f3",
+                        "tertiary": "#c6c6c7",
+                        "surface-dim": "#0f131f",
+                        "primary-container": "#1b0a00",
+                        "primary": "#ffb77a",
+                        "on-tertiary": "#2f3131",
+                        "tertiary-container": "#0d0f0f",
+                        "on-primary-container": "#b96600",
+                        "error": "#ffb4ab",
+                        "surface-container-low": "#171b28",
+                        "on-secondary": "#023a00",
+                        "outline-variant": "#46464c",
+                        "on-tertiary-container": "#7a7c7c",
+                        "primary-fixed": "#ffdcc2",
+                        "surface-tint": "#ffb77a",
+                        "surface-container": "#1b1f2c",
+                        "primary-fixed-dim": "#ffb77a",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "inverse-primary": "#8f4e00",
+                        "secondary-fixed": "#8dfc75",
+                        "surface-container-highest": "#313442",
+                        "on-background": "#dfe2f3",
+                        "inverse-on-surface": "#2c303d",
+                        "on-secondary-fixed-variant": "#035300",
+                        "on-error-container": "#ffdad6",
+                        "secondary-container": "#078200",
+                        "on-tertiary-fixed-variant": "#454747",
+                        "on-secondary-container": "#d9ffc9",
+                        "surface-container-lowest": "#0a0e1a",
+                        "secondary": "#72de5c",
+                        "surface-variant": "#313442",
+                        "on-primary": "#4c2700",
+                        "on-surface-variant": "#c7c6cc",
+                        "on-secondary-fixed": "#012200"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-container-lowest text-on-surface overflow-x-hidden">
+<!-- Background Grid Texture -->
+<div class="fixed inset-0 pixel-grid pointer-events-none"></div>
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#0A0E1A] border-b-4 border-primary">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-outline cursor-pointer flicker-on-click" onclick="window.location.href='dashboard.html'">arrow_back</span>
+<div class="font-['Space_Grotesk'] tracking-[0.1em] uppercase text-sm text-outline">BHARAT RESILIENCE ENGINE</div>
+</div>
+<div class="flex items-center gap-2">
+<h1 class="text-xl font-bold text-white tracking-widest font-mono-tactical">SYSTEM PULSE</h1>
+</div>
+<div class="flex items-center gap-4">
+<div class="font-mono-tactical text-secondary font-bold tracking-tighter">14:32:07</div>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-primary cursor-pointer">settings</span>
+<span class="material-symbols-outlined text-primary cursor-pointer">emergency_home</span>
+</div>
+</div>
+</header>
+
+<main class="pt-20 pb-12 px-6">
+<!-- Control Panel -->
+<div class="mb-8 grid grid-cols-1 md:grid-cols-5 gap-4 item-end bg-surface-container p-4 border border-outline-variant">
+    <div class="flex flex-col gap-2">
+        <label class="text-[10px] text-primary uppercase font-mono-tactical tracking-widest block">Power Sev: <span id="powVal" class="text-white">50</span>%</label>
+        <input type="range" id="powRange" min="0" max="100" value="50" class="w-full accent-primary">
+    </div>
+    <div class="flex flex-col gap-2">
+        <label class="text-[10px] text-primary uppercase font-mono-tactical tracking-widest block">Water Sev: <span id="watVal" class="text-white">50</span>%</label>
+        <input type="range" id="watRange" min="0" max="100" value="50" class="w-full accent-primary">
+    </div>
+    <div class="flex flex-col gap-2">
+        <label class="text-[10px] text-primary uppercase font-mono-tactical tracking-widest block">Fuel Sev: <span id="fueVal" class="text-white">50</span>%</label>
+        <input type="range" id="fueRange" min="0" max="100" value="50" class="w-full accent-primary">
+    </div>
+    <div class="flex flex-col gap-2">
+        <label class="text-[10px] text-primary uppercase font-mono-tactical tracking-widest block">Cyber Sev: <span id="cybVal" class="text-white">50</span>%</label>
+        <input type="range" id="cybRange" min="0" max="100" value="50" class="w-full accent-primary">
+    </div>
+    <div class="flex items-end">
+        <button id="runGlobalBtn" class="w-full bg-primary text-[#0A0E1A] font-bold font-headline uppercase text-xs tracking-widest py-3 px-4 hover:opacity-80 transition-opacity">EXECUTE SIMULATION</button>
+    </div>
+</div>
+
+<!-- System Status Banner -->
+<div class="w-full bg-[#0d1f0d] p-4 flex justify-between items-center mb-8" id="sysBanner">
+<div class="flex items-center gap-4">
+<div id="sysOrb" class="w-3 h-3 bg-secondary rounded-full shadow-[0_0_10px_#72de5c]"></div>
+<span id="sysText" class="font-mono-tactical text-secondary font-bold text-lg">AWAITING SIMULATION TRIGGER</span>
+</div>
+<div class="font-mono-tactical text-secondary">
+<span class="text-xs opacity-60">UPTIME:</span> 99.8%
+            </div>
+</div>
+<!-- AI Model Status Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+<!-- Power Card -->
+<div class="bg-surface-container p-4 relative border-t-4 border-secondary">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="bolt">bolt</span>
+<span class="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 font-mono-tactical">ACTIVE</span>
+</div>
+<h3 class="font-headline font-bold text-sm tracking-widest text-on-surface-variant">POWER MODEL</h3>
+<p class="text-xs text-outline mb-4">Random Forest</p>
+<div class="flex justify-between items-end">
+<div class="text-2xl font-mono-tactical text-on-surface">89%</div>
+<div class="text-[10px] text-outline font-mono-tactical">ACCURACY</div>
+</div>
+</div>
+<!-- Water Card -->
+<div class="bg-surface-container p-4 relative border-t-4 border-secondary">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="water_drop">water_drop</span>
+<span class="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 font-mono-tactical">ACTIVE</span>
+</div>
+<h3 class="font-headline font-bold text-sm tracking-widest text-on-surface-variant">WATER MODEL</h3>
+<p class="text-xs text-outline mb-4">Linear Regression</p>
+<div class="flex justify-between items-end">
+<div class="text-2xl font-mono-tactical text-on-surface">84%</div>
+<div class="text-[10px] text-outline font-mono-tactical">ACCURACY</div>
+</div>
+</div>
+<!-- Fuel Card -->
+<div class="bg-surface-container p-4 relative border-t-4 border-secondary">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="local_fire_department">local_fire_department</span>
+<span class="bg-secondary/10 text-secondary text-[10px] font-bold px-2 py-0.5 font-mono-tactical">ACTIVE</span>
+</div>
+<h3 class="font-headline font-bold text-sm tracking-widest text-on-surface-variant">FUEL MODEL</h3>
+<p class="text-xs text-outline mb-4">XGBoost</p>
+<div class="flex justify-between items-end">
+<div class="text-2xl font-mono-tactical text-on-surface">91%</div>
+<div class="text-[10px] text-outline font-mono-tactical">ACCURACY</div>
+</div>
+</div>
+<!-- Cyber Card -->
+<div class="bg-surface-container p-4 relative border-t-4 border-error shadow-[0_0_15px_rgba(147,0,10,0.3)]">
+<div class="flex justify-between items-start mb-4">
+<span class="material-symbols-outlined text-error" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="bg-error/20 text-error text-[10px] font-bold px-2 py-0.5 font-mono-tactical animate-pulse">ALERT</span>
+</div>
+<h3 class="font-headline font-bold text-sm tracking-widest text-error">CYBER MODEL</h3>
+<p class="text-xs text-outline mb-4">Isolation Forest</p>
+<div class="flex justify-between items-end">
+<div class="text-2xl font-mono-tactical text-on-surface">93%</div>
+<div class="text-[10px] text-outline font-mono-tactical">ACCURACY</div>
+</div>
+<div class="absolute top-0 right-0 w-2 h-2 bg-error"></div>
+</div>
+</div>
+<!-- Central Command Area: Asymmetric Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Live Heartbeat Graphs -->
+<div class="lg:col-span-8 space-y-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Multi-Model Radar Chart -->
+<div class="bg-surface-container-high p-4 flex flex-col justify-between">
+    <div class="text-[10px] font-mono-tactical text-outline mb-1 uppercase tracking-widest">Global Allocation vs Demands</div>
+    <div class="relative w-full h-[250px] flex justify-center">
+        <canvas id="radarChart"></canvas>
+    </div>
+</div>
+<!-- API Latency Line Chart -->
+<div class="bg-surface-container-high p-4 flex flex-col justify-between">
+    <div class="text-[10px] font-mono-tactical text-outline mb-1 uppercase tracking-widest">Model Inference Response Times (ms)</div>
+    <div class="relative w-full h-[250px] flex justify-center">
+        <canvas id="barChart"></canvas>
+    </div>
+</div>
+</div>
+<!-- API Table -->
+<div class="bg-surface-container p-6">
+<h2 class="font-headline font-bold text-sm tracking-widest mb-6 flex items-center gap-2">
+<span class="w-2 h-2 bg-primary"></span> API ENDPOINT HEALTH
+                    </h2>
+<table class="w-full font-mono-tactical text-xs text-left">
+<thead>
+<tr class="border-b border-outline-variant text-outline">
+<th class="pb-3 px-2">ENDPOINT</th>
+<th class="pb-3 px-2">METHOD</th>
+<th class="pb-3 px-2">AVG RESP</th>
+<th class="pb-3 px-2">LAST CALLED</th>
+<th class="pb-3 px-2 text-right">STATUS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/10" id="apiTableBody">
+<!-- Rendered via JS -->
+</tbody>
+</table>
+</div>
+</div>
+<!-- Side Intelligence Panel -->
+<div class="lg:col-span-4 space-y-8">
+<!-- System Gauges -->
+<div class="bg-surface-container p-6">
+<h2 class="font-headline font-bold text-sm tracking-widest mb-6">RESOURCE MONITOR</h2>
+<div class="space-y-6">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border-4 border-secondary flex items-center justify-center font-mono-tactical text-xs">34%</div>
+<div>
+<div class="text-[10px] text-outline uppercase tracking-tighter">CPU Usage</div>
+<div class="h-1 bg-secondary/20 w-32 mt-1">
+<div class="h-full bg-secondary w-[34%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border-4 border-primary flex items-center justify-center font-mono-tactical text-xs">61%</div>
+<div>
+<div class="text-[10px] text-outline uppercase tracking-tighter">Memory</div>
+<div class="h-1 bg-primary/20 w-32 mt-1">
+<div class="h-full bg-primary w-[61%]"></div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 rounded-full border-4 border-secondary flex items-center justify-center font-mono-tactical text-xs">0.8s</div>
+<div>
+<div class="text-[10px] text-outline uppercase tracking-tighter">Model Load Time</div>
+<div class="h-1 bg-secondary/20 w-32 mt-1">
+<div class="h-full bg-secondary w-[15%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Live Activity Log -->
+<div class="bg-surface-container p-6">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline font-bold text-sm tracking-widest">LIVE ACTIVITY</h2>
+<div class="w-2 h-2 bg-secondary rounded-full animate-pulse"></div>
+</div>
+<div class="space-y-4 font-mono-tactical text-[11px] h-64 overflow-y-auto pr-2 custom-scrollbar">
+<div class="flex gap-3">
+<span class="text-outline">14:31:55</span>
+<span class="text-secondary">●</span>
+<span>POWER_MODEL: Prediction dispatched to SECTOR-4.</span>
+</div>
+<div class="flex gap-3">
+<span class="text-outline">14:31:52</span>
+<span class="text-error">●</span>
+<span class="text-error">CYBER_ALERT: Unauthorized node handshake detected.</span>
+</div>
+<div class="flex gap-3">
+<span class="text-outline">14:31:48</span>
+<span class="text-primary">●</span>
+<span>API_GATEWAY: Scaling instances due to load (+2).</span>
+</div>
+<div class="flex gap-3">
+<span class="text-outline">14:31:40</span>
+<span class="text-secondary">●</span>
+<span>FUEL_MODEL: Optimized regional distribution map.</span>
+</div>
+<div class="flex gap-3">
+<span class="text-outline">14:31:33</span>
+<span class="text-outline">○</span>
+<span>SYSTEM: Scheduled backup completed successfully.</span>
+</div>
+<div class="flex gap-3">
+<span class="text-outline">14:31:25</span>
+<span class="text-secondary">●</span>
+<span>WATER_MODEL: Flood risk assessment updated (LOW).</span>
+</div>
+</div>
+</div>
+<!-- Scenario Map Preview -->
+<div class="bg-surface-container overflow-hidden group">
+<div class="p-4 border-b border-outline-variant/30 flex justify-between items-center">
+<div class="text-[10px] font-mono-tactical text-outline">LOCATION_PREVIEW: NEW DELHI</div>
+<span class="material-symbols-outlined text-xs text-primary" data-icon="open_in_full">open_in_full</span>
+</div>
+<img class="w-full h-40 object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-500" data-alt="Digital wireframe map of a city at night with glowing blue and green data points representing infrastructure status" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBdTtEtUT2byJx7MMkGYpjbrszlHFAVvbc2XEj57uV6hjctbbVOkHbqkuodFH4dg_22krDdsj3qEoL9K6Eo3s_XOUWVE59-x0AdGSo6htfZdGg46fadoNFrpb6lBJKxlGZbrGequigvyUIL5d6gQxP6B__AJ6RIX7Ahyf03EP-RnP1ISNUomHjC7-MruH_ZKjgxxFWu0K7NZGIKT8iphPV61MEJTI7ux9-ZPRD0b2Cbl4BTwCrup3SyQ-tqOTYuBu0zSQyhJj6n5vRl"/>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="mt-12 py-8 px-6 border-t border-outline-variant/20 bg-surface-container-lowest flex flex-col md:flex-row justify-between items-center gap-6">
+<div class="font-mono-tactical text-outline text-[10px] tracking-widest">
+            BHARAT RESILIENCE ENGINE v1.0 // B.R.E. OS
+        </div>
+<div class="text-center">
+<div class="font-headline font-black text-primary text-xl tracking-tighter">BUILT FOR INDIA'S INFRASTRUCTURE</div>
+</div>
+<div class="font-mono-tactical text-outline text-[10px]">
+            HACKATHON 2024 // COMMAND_SECURE
+        </div>
+</footer>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1b1f2c;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #909096;
+        }
+    </style>
+<script>
+    ['pow', 'wat', 'fue', 'cyb'].forEach(pfx => {
+        document.getElementById(`${pfx}Range`).addEventListener('input', (e) => {
+            document.getElementById(`${pfx}Val`).textContent = e.target.value;
+        });
+    });
+
+    const API_DEF = [
+        {name: 'POWER', ext: '/api/power', el: 'powRange'},
+        {name: 'WATER', ext: '/api/water', el: 'watRange'},
+        {name: 'FUEL', ext: '/api/fuel', el: 'fueRange'},
+        {name: 'CYBER', ext: '/api/cyber', el: 'cybRange'}
+    ];
+
+    let radarChartObj = null;
+    let barChartObj = null;
+
+    function initCharts() {
+        Chart.defaults.color = '#909096';
+        Chart.defaults.font.family = 'Space Mono';
+
+        const ctxRadar = document.getElementById('radarChart').getContext('2d');
+        radarChartObj = new Chart(ctxRadar, {
+            type: 'polarArea',
+            data: {
+                labels: ['Power', 'Water', 'Fuel', 'Cyber'],
+                datasets: [{
+                    label: 'Resources Allocated',
+                    data: [1, 1, 1, 1], // placeholders
+                    backgroundColor: [
+                        'rgba(255, 183, 122, 0.5)',
+                        'rgba(114, 222, 92, 0.5)',
+                        'rgba(255, 180, 171, 0.5)',
+                        'rgba(141, 252, 117, 0.5)'
+                    ],
+                    borderColor: '#1b1f2c',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: { ticks: { display: false }, grid: { color: '#313442' } }
+                },
+                plugins: { legend: { position: 'right' } }
+            }
+        });
+
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        barChartObj = new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['Power', 'Water', 'Fuel', 'Cyber'],
+                datasets: [{
+                    label: 'Latency (ms)',
+                    data: [0, 0, 0, 0],
+                    backgroundColor: '#72de5c',
+                }]
+            },
+            options: {
+                 responsive: true,
+                 maintainAspectRatio: false,
+                 scales: { y: { grid: { color: '#313442' } }, x: { grid: { display: false } } }
+            }
+        });
+    }
+
+    document.getElementById('runGlobalBtn').addEventListener('click', async () => {
+        const btn = document.getElementById('runGlobalBtn');
+        btn.textContent = 'EXECUTING...';
+        btn.classList.add('animate-pulse', 'pointer-events-none');
+
+        // Status banner
+        document.getElementById('sysBanner').classList.remove('bg-[#0d1f0d]');
+        document.getElementById('sysBanner').classList.add('bg-[#1b0a00]');
+        document.getElementById('sysOrb').classList.remove('bg-secondary', 'shadow-[0_0_10px_#72de5c]');
+        document.getElementById('sysOrb').classList.add('bg-primary', 'shadow-[0_0_10px_#ffb77a]', 'animate-pulse');
+        document.getElementById('sysText').textContent = 'GLOBAL SIMULATION IN PROGRESS';
+        document.getElementById('sysText').classList.replace('text-secondary', 'text-primary');
+
+        const tbody = document.getElementById('apiTableBody');
+        tbody.innerHTML = '';
+
+        const promises = API_DEF.map(async (api) => {
+            const sev = parseInt(document.getElementById(api.el).value);
+            const start = performance.now();
+            try {
+                const res = await fetch(api.ext, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ severity: sev })
+                });
+                const data = await res.json();
+                const latency = performance.now() - start;
+                return { api, sev, data, latency, success: true };
+            } catch (err) {
+                const latency = performance.now() - start;
+                return { api, sev, data: null, latency, success: false, err };
+            }
+        });
+
+        const results = await Promise.all(promises);
+
+        updateDashboardWidgets(results);
+
+        btn.textContent = 'EXECUTE SIMULATION';
+        btn.classList.remove('animate-pulse', 'pointer-events-none');
+        document.getElementById('sysBanner').classList.replace('bg-[#1b0a00]', 'bg-[#0d1f0d]');
+        document.getElementById('sysOrb').classList.replace('bg-primary', 'bg-secondary');
+        document.getElementById('sysOrb').classList.replace('shadow-[0_0_10px_#ffb77a]', 'shadow-[0_0_10px_#72de5c]');
+        document.getElementById('sysText').classList.replace('text-primary', 'text-secondary');
+        document.getElementById('sysText').textContent = 'SIMULATION COMPLETE - ALL SYSTEMS MONITORED';
+    });
+
+    function updateDashboardWidgets(results) {
+        const tbody = document.getElementById('apiTableBody');
+        const radarData = [];
+        const barData = [];
+
+        results.forEach(res => {
+            const tr = document.createElement('tr');
+            let alloc = 1;
+
+            if (res.success) {
+                const isCrit = res.sev >= 70;
+                alloc = res.data.total_allocated || Math.floor(Math.random()*100);
+                
+                tr.className = isCrit ? 'bg-primary/5' : '';
+                tr.innerHTML = `
+                    <td class="py-3 px-2 ${isCrit ? 'border-l-2 border-primary' : ''}">${res.api.ext}</td>
+                    <td class="py-3 px-2">POST</td>
+                    <td class="py-3 px-2">${Math.round(res.latency)}ms</td>
+                    <td class="py-3 px-2">NOW</td>
+                    <td class="py-3 px-2 text-right ${isCrit ? 'text-primary' : 'text-secondary'}">${isCrit ? 'CRITICAL' : 'STABLE'}</td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td class="py-3 px-2 border-l-2 border-error">${res.api.ext}</td>
+                    <td class="py-3 px-2">POST</td>
+                    <td class="py-3 px-2">FAIL</td>
+                    <td class="py-3 px-2">NOW</td>
+                    <td class="py-3 px-2 text-right text-error">ERROR</td>
+                `;
+            }
+            tbody.appendChild(tr);
+
+            radarData.push(alloc);
+            barData.push(Math.round(res.latency));
+        });
+
+        radarChartObj.data.datasets[0].data = radarData;
+        radarChartObj.update();
+
+        barChartObj.data.datasets[0].data = barData;
+        barChartObj.update();
+    }
+
+    initCharts();
+</script>
+</body></html>

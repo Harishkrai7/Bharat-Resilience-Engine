@@ -33,10 +33,12 @@
         <span class="status-dot"></span>
         STATUS: CRITICAL
       </div>
-      <button class="btn-pulse">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        SYSTEM PULSE
-      </button>
+      <a href="pulse.html">
+        <button class="btn-pulse">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          SYSTEM PULSE
+        </button>
+      </a>
       <div class="topbar-icons">
         <button class="icon-btn" aria-label="Timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
         <button class="icon-btn notification-active" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
@@ -254,6 +256,31 @@
       </div>
 
     </aside>
+
+    <!-- === API RESPONSE VIEWER (End-to-End Verification) === -->
+    <div class="api-response-viewer" id="apiResponseViewer">
+      <div class="arv-header" id="arvToggle">
+        <div class="arv-title-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+            <polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span class="arv-title">API RESPONSE VIEWER</span>
+          <span class="arv-badge" id="arvStatus">AWAITING REQUEST</span>
+        </div>
+        <svg class="arv-chevron" id="arvChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+      <div class="arv-body" id="arvBody">
+        <div class="arv-meta" id="arvMeta">
+          <span class="arv-endpoint" id="arvEndpoint">—</span>
+          <span class="arv-timestamp" id="arvTimestamp">—</span>
+          <span class="arv-latency" id="arvLatency">—</span>
+        </div>
+        <pre class="arv-output" id="arvOutput">Click "RUN SIMULATION" or adjust a module slider to trigger an API call.
+Response JSON will appear here for end-to-end verification.</pre>
+      </div>
+    </div>
 
   </main>
 

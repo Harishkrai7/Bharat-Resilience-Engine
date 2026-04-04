@@ -8,11 +8,14 @@
   // ── Backend API Configuration ──
   // Default to a placeholder, but check localStorage so the user can update it via console
   // Example: localStorage.setItem('backend_url', 'https://your-backend.pythonanywhere.com')
-  const DEFAULT_URL = "http://10.3.52.187:5001"; 
+  const DEFAULT_URL = window.location.origin || "http://localhost:5001"; 
   const BASE_URL = localStorage.getItem('backend_url') || DEFAULT_URL;
 
   // ── Call Flask backend ──
   async function callBackend(scenario, severity) {
+      const endpoint = `/api/${scenario}`;
+      const startTs = performance.now();
+      renderApiStatus('loading', scenario);
       try {
           const res = await fetch(`${BASE_URL}/api/${scenario}`, {
               method: "POST",
@@ -23,12 +26,55 @@
               })
           });
           const data = await res.json();
+          const latencyMs = (performance.now() - startTs).toFixed(1);
           console.log("Backend response:", data);
+          renderApiResponse(data, endpoint, latencyMs);
           return data;
       } catch (err) {
           console.error("Backend error:", err);
+          renderApiError(err, endpoint);
           return null;
       }
+  }
+
+  // ── API Response Viewer helpers ──
+  function renderApiResponse(data, endpoint, latencyMs) {
+      const output   = document.getElementById('arvOutput');
+      const badge    = document.getElementById('arvStatus');
+      const epEl     = document.getElementById('arvEndpoint');
+      const tsEl     = document.getElementById('arvTimestamp');
+      const ltEl     = document.getElementById('arvLatency');
+      const body     = document.getElementById('arvBody');
+      if (!output) return;
+
+      output.textContent = JSON.stringify(data, null, 2);
+      badge.textContent  = 'SUCCESS';
+      badge.className    = 'arv-badge arv-success';
+      epEl.textContent   = 'POST ' + endpoint;
+      tsEl.textContent   = new Date().toLocaleTimeString();
+      ltEl.textContent   = latencyMs + ' ms';
+      if (body) body.style.display = 'block';
+  }
+
+  function renderApiError(err, endpoint) {
+      const output = document.getElementById('arvOutput');
+      const badge  = document.getElementById('arvStatus');
+      const epEl   = document.getElementById('arvEndpoint');
+      const body   = document.getElementById('arvBody');
+      if (!output) return;
+
+      output.textContent = 'ERROR: ' + (err.message || err);
+      badge.textContent  = 'FAILED';
+      badge.className    = 'arv-badge arv-error';
+      epEl.textContent   = 'POST ' + endpoint;
+      if (body) body.style.display = 'block';
+  }
+
+  function renderApiStatus(status, scenario) {
+      const badge = document.getElementById('arvStatus');
+      if (!badge) return;
+      badge.textContent = 'CALLING /api/' + scenario + '…';
+      badge.className   = 'arv-badge arv-loading';
   }
 
   // ── Update Dashboard Elements ──
@@ -85,7 +131,7 @@
 
   // ── Auth Route Protection ──
   if (localStorage.getItem('bharatReAuth') !== 'true') {
-    window.location.replace('index.html');
+    window.location.replace('/');
     return;
   }
 
@@ -288,6 +334,39 @@
   const simLoading = document.getElementById('simLoading');
   if (runBtn && simLoading) {
     runBtn.addEventListener('click', () => {
+      // Check if Cyber module is active — redirect to dedicated sim page
+      const cyberMod = document.getElementById('modCyber');
+      if (cyberMod && cyberMod.classList.contains('active')) {
+        const slider = cyberMod.querySelector('input[type="range"]');
+        const severity = slider ? slider.value : 50;
+        window.location.href = 'cyber_sim.html?severity=' + severity;
+        return;
+      }
+      // Check if Water module is active — redirect to dedicated sim page
+      const waterMod = document.getElementById('modWater');
+      if (waterMod && waterMod.classList.contains('active')) {
+        const slider = waterMod.querySelector('input[type="range"]');
+        const severity = slider ? slider.value : 50;
+        window.location.href = 'water_sim.html?severity=' + severity;
+        return;
+      }
+      // Check if Fuel module is active — redirect to dedicated sim page
+      const fuelMod = document.getElementById('modFuel');
+      if (fuelMod && fuelMod.classList.contains('active')) {
+        const slider = fuelMod.querySelector('input[type="range"]');
+        const severity = slider ? slider.value : 50;
+        window.location.href = 'fuel_sim.html?severity=' + severity;
+        return;
+      }
+      // Check if Power module is active — redirect to dedicated sim page
+      const powerMod = document.getElementById('modPower');
+      if (powerMod && powerMod.classList.contains('active')) {
+        const slider = powerMod.querySelector('input[type="range"]');
+        const severity = slider ? slider.value : 50;
+        window.location.href = 'power_sim.html?severity=' + severity;
+        return;
+      }
+      // Default behavior for other modules
       simLoading.classList.remove('hidden');
       setTimeout(() => simLoading.classList.add('hidden'), 2200);
       if (window.onUserInput) window.onUserInput();
@@ -297,20 +376,23 @@
   // ── AI Execute Button ──
   const execBtn = document.getElementById('execActionBtn');
   if (execBtn) {
-    execBtn.addEventListener('click', () => {
-      execBtn.textContent = 'EXECUTING…';
+    execBtn.addEventListener('click', async () => {
+      execBtn.textContent = 'CALCULATING REROUTE…';
       execBtn.style.opacity = '0.7';
+      
+      if (window.onUserInput) {
+          await window.onUserInput();
+      }
+
+      execBtn.textContent = '✓  REROUTE SUCCESSFUL';
+      execBtn.style.background = 'var(--green-bright, #1db954)';
+      execBtn.style.color = '#fff';
+      execBtn.style.boxShadow = '0 0 18px rgba(29,185,84,0.5)';
+      execBtn.style.opacity = '1';
       setTimeout(() => {
-        execBtn.textContent = '✓  ACTION SUCCESSFUL';
-        execBtn.style.background = 'var(--green-bright)';
-        execBtn.style.color = '#fff';
-        execBtn.style.boxShadow = '0 0 18px rgba(29,185,84,0.5)';
-        execBtn.style.opacity = '1';
-        setTimeout(() => {
-          execBtn.textContent = 'EXECUTE REROUTE';
-          execBtn.removeAttribute('style');
-        }, 3000);
-      }, 1500);
+        execBtn.textContent = 'EXECUTE REROUTE';
+        execBtn.removeAttribute('style');
+      }, 3000);
     });
   }
 
@@ -552,6 +634,18 @@
   window.addEventListener('resize', resize);
   resize();
   requestAnimationFrame(draw);
+
+  // ── API Response Viewer toggle ──
+  const arvToggle = document.getElementById('arvToggle');
+  const arvBody   = document.getElementById('arvBody');
+  const arvChev   = document.getElementById('arvChevron');
+  if (arvToggle && arvBody) {
+    arvToggle.addEventListener('click', () => {
+      const isOpen = arvBody.style.display !== 'none';
+      arvBody.style.display = isOpen ? 'none' : 'block';
+      if (arvChev) arvChev.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+    });
+  }
 
   // Initial trigger after short delay
   setTimeout(() => { if (window.onUserInput) window.onUserInput(); }, 500);

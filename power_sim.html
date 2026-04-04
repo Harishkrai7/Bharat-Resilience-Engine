@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BRE — Power Grid Simulation</title>
+<meta name="description" content="Real-Time Tactical Heatmap — ML-powered power grid crisis simulation."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "surface-container-highest": "#313442",
+                    "on-surface-variant": "#c7c6cc",
+                    "tertiary": "#c6c6c7",
+                    "surface-container-high": "#262a37",
+                    "secondary-container": "#078200",
+                    "outline-variant": "#46464c",
+                    "on-error-container": "#ffdad6",
+                    "surface-dim": "#0f131f",
+                    "surface-container-low": "#171b28",
+                    "background": "#0f131f",
+                    "outline": "#909096",
+                    "on-background": "#dfe2f3",
+                    "surface-container": "#1b1f2c",
+                    "on-primary": "#4c2700",
+                    "error-container": "#93000a",
+                    "primary-fixed-dim": "#ffb77a",
+                    "surface-container-lowest": "#0a0e1a",
+                    "surface": "#0f131f",
+                    "primary-container": "#1b0a00",
+                    "error": "#ffb4ab",
+                    "on-surface": "#dfe2f3",
+                    "surface-variant": "#313442",
+                    "primary": "#ffb77a",
+                    "surface-bright": "#353946",
+                    "secondary": "#72de5c",
+                    "secondary-fixed-dim": "#72de5c",
+                    "on-primary-container": "#b96600",
+                    "surface-tint": "#ffb77a",
+                    "on-secondary": "#023a00"
+                },
+                "borderRadius": { "DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "0px" },
+                "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+                }
+            }
+        }
+    }
+</script>
+<style>
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    .pixel-grid {
+        background-image: linear-gradient(to right, rgba(70,70,76,0.05) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(70,70,76,0.05) 1px, transparent 1px);
+        background-size: 8px 8px;
+    }
+    body { overflow-x: hidden; }
+    .sim-overlay {
+        position: fixed; inset: 0; z-index: 999;
+        background: rgba(10,14,26,0.95);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 16px;
+        transition: opacity 0.5s;
+    }
+    .sim-overlay.hidden { opacity: 0; pointer-events: none; }
+    .sim-overlay .spinner {
+        width: 40px; height: 40px;
+        border: 3px solid #313442; border-top-color: #FFB77A;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 8px currentColor; } 50% { box-shadow: 0 0 24px currentColor; } }
+    .node-critical { animation: pulse-glow 1.5s ease-in-out infinite; color: #ffb4ab; }
+    .node-warning { animation: pulse-glow 2.5s ease-in-out infinite; color: #ffb77a; }
+    .sparkline-bar { transition: height 0.8s ease-out; }
+    .alloc-bar { transition: width 1s ease-out; }
+    .log-entry { animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #46464c; }
+</style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body selection:bg-primary selection:text-on-primary">
+
+<!-- Loading Overlay -->
+<div class="sim-overlay" id="simOverlay">
+    <div class="spinner"></div>
+    <span class="font-headline text-xs tracking-[0.2em] text-[#FFB77A] uppercase">Running Power Grid Demand Model…</span>
+    <span class="text-[10px] text-outline font-mono">ANALYZING GRID TOPOLOGY & NODE TELEMETRY</span>
+</div>
+
+<!-- TOP APP BAR -->
+<header class="fixed top-0 w-full z-50 h-16 bg-[#0A0E1A] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex justify-between items-center px-6">
+    <div class="flex items-center gap-4">
+        <a href="/dashboard" class="material-symbols-outlined text-outline text-sm hover:text-primary">arrow_back</a>
+        <span class="text-xl font-bold text-[#FFB77A] tracking-tighter font-headline">SOVEREIGN COMMAND</span>
+        <div class="h-4 w-px bg-surface-container-highest"></div>
+        <span class="font-['Space_Grotesk'] uppercase tracking-[0.1em] text-sm text-[#FFB77A]">BRE ENGINE v4.2</span>
+    </div>
+    <div class="flex items-center space-x-6">
+        <div class="flex space-x-4 font-label text-xs tracking-widest text-[#C6C6C7]">
+            <span class="flex items-center gap-1"><span class="w-2 h-2" id="uptimeDot"></span> UPTIME: <span id="uptimeVal">—</span></span>
+            <span class="flex items-center gap-1 text-primary"><span class="w-2 h-2 bg-primary"></span> CRITICAL NODES: <span id="critNodeCount">—</span></span>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/dashboard" class="material-symbols-outlined text-[#FFB77A] hover:bg-[#FFB77A] hover:text-[#0A0E1A] p-2 cursor-pointer">dashboard</a>
+            <span class="material-symbols-outlined text-[#FFB77A] hover:bg-[#FFB77A] hover:text-[#0A0E1A] p-2 cursor-pointer">settings</span>
+        </div>
+    </div>
+</header>
+
+<!-- SIDE NAV BAR -->
+<nav class="fixed left-0 top-16 h-[calc(100vh-104px)] w-64 bg-[#0A0E1A] flex flex-col pt-8 space-y-2 z-40">
+    <div class="px-6 mb-6">
+        <h2 class="font-['Space_Grotesk'] uppercase text-xs tracking-widest text-[#72DE5C] font-black">SCENARIOS</h2>
+        <p class="text-[10px] text-tertiary tracking-tighter">SECTOR-7 ACTIVE OPS</p>
+    </div>
+    <div class="bg-[#1A1F2E] text-[#FFB77A] border-r-8 border-[#FFB77A] px-4 py-4 flex items-center gap-3 font-['Space_Grotesk'] uppercase text-xs tracking-widest cursor-default">
+        <span class="material-symbols-outlined">bolt</span>
+        <span>POWER GRID</span>
+    </div>
+    <a href="/cyber-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-['Space_Grotesk'] uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined">shield</span>
+        <span>CYBER ATTACK</span>
+    </a>
+    <a href="/fuel-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-['Space_Grotesk'] uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined">local_gas_station</span>
+        <span>FUEL DEPOT</span>
+    </a>
+    <a href="/water-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-['Space_Grotesk'] uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined">water_drop</span>
+        <span>WATER RES</span>
+    </a>
+    <!-- Severity control -->
+    <div class="px-6 mt-auto">
+        <label class="text-[10px] text-outline tracking-[0.2em] block mb-2 font-label uppercase">GRID SEVERITY</label>
+        <input type="range" id="severitySlider" min="0" max="100" value="50"
+            class="w-full h-1 bg-surface-variant appearance-none cursor-pointer"
+            style="accent-color: #FFB77A;">
+        <div class="flex justify-between text-[9px] text-outline mt-1 font-label">
+            <span>0%</span>
+            <span id="severityValue" class="text-primary font-bold">50%</span>
+            <span>100%</span>
+        </div>
+    </div>
+    <div class="px-6 py-4">
+        <button id="rerunBtn" class="w-full bg-on-primary-container text-[#0A0E1A] font-black p-3 font-['Space_Grotesk'] uppercase text-xs tracking-widest hover:bg-primary flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">replay</span>
+            RE-RUN SIMULATION
+        </button>
+    </div>
+    <div class="px-6 pb-4">
+        <div class="bg-surface-container p-4 border-l-4" id="trustBadge">
+            <p class="text-[10px] text-on-surface-variant font-label">SYSTEM_TRUST</p>
+            <p class="text-lg font-headline font-bold" id="trustLevel">—</p>
+        </div>
+    </div>
+</nav>
+
+<!-- MAIN CANVAS — Tactical Heatmap -->
+<main class="ml-64 mr-80 pt-16 h-screen relative pixel-grid bg-surface">
+    <div class="absolute inset-0 flex items-center justify-center p-8">
+        <div class="relative w-full h-full bg-surface-container-low overflow-hidden" id="mapViewport">
+            <!-- India Map Background -->
+            <div class="absolute inset-0 opacity-40 mix-blend-screen" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCJEEcdoEDJ8H_Hg2N_KYtum7xOKLLfpDZLiB_X9eId-VQrBri8qUVyeXS_dAbEeBYhjeTrgnbvl_7-u_w8Nrl7mCRi_O9FJtGlIKies15GE4AEBdCKv0pQOvcpJe57wVj0Kh_XyaqWQ8wL2BRMtRID5OmIWYV56boy_Wb9TM47GEHYnp4b_I5tTZEerH5cPHurXiNhhMC07HME7-UPa4fDg3qIzakCHKRhFJKRylf8b7aHhpeF_pfA_DlTJf2niVaQM_077Nz22rbG'); background-size: cover; background-position: center;"></div>
+
+            <!-- Heatmap Nodes — dynamically populated -->
+            <div id="heatmapNodes"></div>
+
+            <!-- Coordinate Callout -->
+            <div class="absolute top-12 left-12 p-3 bg-surface-container-highest/90 border-t-4 border-primary shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] z-10">
+                <p class="text-[10px] text-primary font-label tracking-widest">TACTICAL_COORDS</p>
+                <p class="text-lg font-headline font-bold text-on-surface">28.6139° N, 77.2090° E</p>
+                <div class="mt-2 flex items-center gap-2">
+                    <div class="h-1 w-full bg-surface-container-low">
+                        <div class="h-full bg-primary" id="intBar" style="width: 0%;"></div>
+                    </div>
+                    <span class="text-[10px] font-label text-primary" id="intVal">INT_—</span>
+                </div>
+            </div>
+
+            <!-- Ticker Overlay -->
+            <div class="absolute bottom-0 w-full bg-surface-container-highest/80 py-2 px-4 flex items-center gap-8 overflow-hidden whitespace-nowrap z-10" id="tickerBar">
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- RIGHT METRICS PANEL -->
+<aside class="fixed right-0 top-16 h-[calc(100vh-104px)] w-80 bg-[#0F1424] border-l-2 border-surface-container-highest z-40 p-6 flex flex-col space-y-6 overflow-y-auto">
+    <div>
+        <h3 class="font-headline font-black text-on-surface uppercase tracking-tighter text-sm mb-4">LIVE FEED METRICS</h3>
+        <!-- Demand Flow -->
+        <div class="bg-surface-container-low p-4 space-y-3 mb-4">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">DEMAND_FLOW</span>
+                <span class="text-xs font-headline font-bold" id="demandFlow">—</span>
+            </div>
+            <div class="h-12 flex items-end gap-1" id="demandSparkline"></div>
+        </div>
+        <!-- Grid Load -->
+        <div class="bg-surface-container-low p-4 space-y-3 mb-4">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">GRID_LOAD</span>
+                <span class="text-xs font-headline font-bold" id="gridLoad">—</span>
+            </div>
+            <div class="h-12 flex items-end gap-1" id="loadSparkline"></div>
+        </div>
+        <!-- Allocation Breakdown -->
+        <div class="bg-surface-container-low p-4 space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">ALLOCATION_BREAKDOWN</span>
+                <span class="text-xs font-headline font-bold text-primary" id="totalAllocVal">—</span>
+            </div>
+            <div class="space-y-2" id="allocBars"></div>
+        </div>
+    </div>
+    <div>
+        <h3 class="font-headline font-black text-on-surface uppercase tracking-tighter text-sm mb-4">SYSTEM_LOGS</h3>
+        <div class="space-y-2" id="sysLogs"></div>
+    </div>
+    <div class="bg-primary-container p-4 border-t-4 border-primary">
+        <p class="text-[10px] font-label text-primary uppercase tracking-widest mb-2">AI RECOMMENDATION</p>
+        <p class="text-xs font-headline font-bold text-on-surface leading-tight" id="aiRec">AWAITING DATA…</p>
+    </div>
+</aside>
+
+<!-- BOTTOM NAV BAR -->
+<footer class="fixed bottom-0 w-full z-50 h-10 bg-[#0A0E1A] border-t-2 border-[#1A1F2E] flex justify-start items-center overflow-hidden">
+    <div class="bg-[#FFB77A] text-[#0A0E1A] h-full px-6 flex items-center justify-center font-['Space_Grotesk'] uppercase text-[10px] gap-2">
+        <span class="material-symbols-outlined text-sm">query_stats</span>
+        <span>ALLOCATION ACTIVE</span>
+    </div>
+    <a href="/dashboard" class="text-[#C6C6C7] h-full px-6 flex items-center justify-center font-['Space_Grotesk'] uppercase text-[10px] gap-2 hover:bg-[#72DE5C] hover:text-[#0A0E1A] cursor-pointer">
+        <span class="material-symbols-outlined text-sm">dashboard</span>
+        <span>DASHBOARD</span>
+    </a>
+    <a id="reportBtn" href="#" class="text-[#C6C6C7] h-full px-6 flex items-center justify-center font-['Space_Grotesk'] uppercase text-[10px] gap-2 hover:bg-[#72DE5C] hover:text-[#0A0E1A] cursor-pointer">
+        <span class="material-symbols-outlined text-sm">account_tree</span>
+        <span>REPORTS</span>
+    </a>
+    <div class="ml-auto px-6 flex items-center gap-4">
+        <span class="text-[10px] font-label text-tertiary uppercase tracking-widest">AI_CORE_STATUS: <span class="text-secondary" id="aiCoreStatus">—</span></span>
+        <div class="flex gap-1" id="aiCoreDots"></div>
+    </div>
+</footer>
+
+<script>
+(function() {
+    'use strict';
+    const BASE_URL = window.location.origin || 'http://localhost:5001';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSeverity = parseInt(urlParams.get('severity')) || 50;
+    const severitySlider = document.getElementById('severitySlider');
+    severitySlider.value = initialSeverity;
+    document.getElementById('severityValue').textContent = initialSeverity + '%';
+
+    severitySlider.addEventListener('input', (e) => {
+        document.getElementById('severityValue').textContent = e.target.value + '%';
+    });
+    document.getElementById('rerunBtn').addEventListener('click', () => {
+        runSimulation(parseInt(severitySlider.value));
+    });
+
+    // Grid node positions on the India map (approximate city positions)
+    const GRID_NODES = [
+        { name: 'DELHI',      x: 43, y: 25, region: 'NORTH' },
+        { name: 'MUMBAI',     x: 30, y: 55, region: 'WEST' },
+        { name: 'KOLKATA',    x: 65, y: 42, region: 'EAST' },
+        { name: 'CHENNAI',    x: 50, y: 72, region: 'SOUTH' },
+        { name: 'BENGALURU',  x: 45, y: 68, region: 'SOUTH' },
+        { name: 'HYDERABAD',  x: 45, y: 58, region: 'CENTRAL' },
+        { name: 'JAIPUR',     x: 33, y: 30, region: 'NORTH' },
+        { name: 'LUCKNOW',    x: 50, y: 30, region: 'NORTH' },
+        { name: 'AHMEDABAD',  x: 25, y: 40, region: 'WEST' },
+        { name: 'BHOPAL',     x: 40, y: 40, region: 'CENTRAL' },
+        { name: 'PATNA',      x: 58, y: 32, region: 'EAST' },
+        { name: 'GUWAHATI',   x: 76, y: 30, region: 'NORTHEAST' },
+    ];
+
+    async function runSimulation(severity) {
+        const overlay = document.getElementById('simOverlay');
+        overlay.classList.remove('hidden');
+        overlay.style.opacity = '1';
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/power`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ severity, total_nodes: 200 })
+            });
+            const data = await res.json();
+            console.log('Power ML response:', data);
+
+            setTimeout(() => {
+                renderResults(data, severity);
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 800);
+        } catch (err) {
+            console.error('Power API error:', err);
+            overlay.querySelector('span:first-of-type').textContent = 'CONNECTION FAILED';
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 2000);
+        }
+    }
+
+    function renderResults(data, severity) {
+        const allocation = data.allocation || {};
+        const affectedStates = data.affected_states || [];
+        const totalAllocated = data.total_allocated || 0;
+        const recommendation = data.recommendation || 'Monitor grid stability.';
+        const available = data.available_units || (100 - severity);
+
+        // ── Header metrics ──
+        const uptime = Math.max(90, 100 - severity * 0.15).toFixed(2);
+        document.getElementById('uptimeVal').textContent = uptime + '%';
+        const uptimeDot = document.getElementById('uptimeDot');
+        uptimeDot.className = `w-2 h-2 ${severity >= 60 ? 'bg-error animate-pulse' : 'bg-secondary'}`;
+
+        const critCount = Math.min(12, Math.floor(severity / 8));
+        document.getElementById('critNodeCount').textContent = String(critCount).padStart(2, '0');
+
+        // Trust badge
+        const trustBadge = document.getElementById('trustBadge');
+        const trustLevel = document.getElementById('trustLevel');
+        if (severity >= 60) {
+            trustBadge.className = 'bg-surface-container p-4 border-l-4 border-error';
+            trustLevel.className = 'text-lg font-headline font-bold text-error';
+            trustLevel.textContent = 'CRITICAL';
+        } else if (severity >= 30) {
+            trustBadge.className = 'bg-surface-container p-4 border-l-4 border-primary';
+            trustLevel.className = 'text-lg font-headline font-bold text-primary';
+            trustLevel.textContent = 'DEGRADED';
+        } else {
+            trustBadge.className = 'bg-surface-container p-4 border-l-4 border-secondary';
+            trustLevel.className = 'text-lg font-headline font-bold text-secondary';
+            trustLevel.textContent = 'OPTIMAL';
+        }
+
+        // Intensity bar
+        const intPct = Math.min(100, severity * 1.2);
+        document.getElementById('intBar').style.width = intPct + '%';
+        document.getElementById('intVal').textContent = 'INT_' + intPct.toFixed(0);
+
+        // AI Core status
+        const aiStatus = document.getElementById('aiCoreStatus');
+        aiStatus.textContent = severity >= 60 ? 'THREAT_DETECT' : 'COGNITIVE_LOCK';
+        aiStatus.className = severity >= 60 ? 'text-error' : 'text-secondary';
+        const aiDots = document.getElementById('aiCoreDots');
+        aiDots.innerHTML = [0,1,2].map(i => {
+            const active = severity >= 60 ? i === 0 : true;
+            return `<div class="w-1.5 h-1.5 ${active ? (severity >= 60 ? 'bg-error animate-pulse' : 'bg-secondary animate-pulse') : 'bg-secondary/20'}"></div>`;
+        }).join('');
+
+        // ── Heatmap Nodes ──
+        const nodesContainer = document.getElementById('heatmapNodes');
+        nodesContainer.innerHTML = '';
+
+        GRID_NODES.forEach((node, idx) => {
+            // Determine node health based on severity
+            const nodeHealth = Math.max(0, 100 - severity * (0.5 + Math.random() * 0.8));
+            let nodeClass, nodeColor, statusLabel;
+            if (nodeHealth < 25) {
+                nodeClass = 'node-critical';
+                nodeColor = 'border-error bg-error/30';
+                statusLabel = 'CRITICAL';
+            } else if (nodeHealth < 50) {
+                nodeClass = 'node-warning';
+                nodeColor = 'border-primary bg-primary/30';
+                statusLabel = 'WARNING';
+            } else {
+                nodeClass = '';
+                nodeColor = 'border-secondary/40 bg-secondary/20';
+                statusLabel = 'STABLE';
+            }
+
+            const size = statusLabel === 'CRITICAL' ? 'w-16 h-16' : statusLabel === 'WARNING' ? 'w-14 h-14' : 'w-12 h-12';
+
+            const el = document.createElement('div');
+            el.className = `absolute ${size} ${nodeColor} ${nodeClass} border-2 flex flex-col items-center justify-center cursor-pointer z-10 hover:scale-110 transition-transform`;
+            el.style.left = node.x + '%';
+            el.style.top = node.y + '%';
+            el.style.transform = 'translate(-50%, -50%)';
+            el.innerHTML = `
+                <span class="text-[7px] font-label font-bold">${statusLabel}</span>
+                <span class="text-[6px] font-mono mt-0.5">${node.name}</span>
+            `;
+            el.title = `${node.name} (${node.region}) — Health: ${nodeHealth.toFixed(0)}%`;
+            nodesContainer.appendChild(el);
+        });
+
+        // ── Ticker Bar ──
+        const ticker = document.getElementById('tickerBar');
+        ticker.innerHTML = '';
+        const tickerItems = GRID_NODES.map(n => {
+            const health = Math.max(0, 100 - severity * (0.5 + Math.random() * 0.8));
+            const isOk = health >= 50;
+            return `<span class="text-xs font-label ${isOk ? 'text-secondary' : 'text-primary'} flex items-center gap-2">
+                <span class="w-2 h-2 inline-block ${isOk ? 'bg-secondary' : 'bg-primary'}"></span>
+                NODE_${n.name}: ${isOk ? 'GRID_SYNC_OK' : 'LOAD_THRESHOLD_HIGH'}
+            </span>`;
+        });
+        ticker.innerHTML = tickerItems.join('');
+
+        // ── Demand Sparkline ──
+        const demandSpark = document.getElementById('demandSparkline');
+        demandSpark.innerHTML = '';
+        const demandPct = (severity * 0.3 + Math.random() * 10).toFixed(1);
+        const demandFlow = document.getElementById('demandFlow');
+        demandFlow.textContent = (severity >= 50 ? '-' : '+') + demandPct + '%';
+        demandFlow.className = `text-xs font-headline font-bold ${severity >= 50 ? 'text-error' : 'text-secondary'}`;
+
+        const sparkHeights = [0.25, 0.5, 0.75, 1, 0.66, 0.5, 0.33, 0.25, 1].map(h => h * (0.5 + severity / 100));
+        sparkHeights.forEach((h, i) => {
+            const bar = document.createElement('div');
+            bar.className = `w-2 sparkline-bar ${severity >= 50 ? 'bg-error' : 'bg-secondary'}`;
+            bar.style.opacity = 0.2 + h * 0.8;
+            bar.style.height = '0px';
+            demandSpark.appendChild(bar);
+            setTimeout(() => { bar.style.height = (h * 48) + 'px'; }, 200 + i * 60);
+        });
+
+        // ── Grid Load Sparkline ──
+        const loadSpark = document.getElementById('loadSparkline');
+        loadSpark.innerHTML = '';
+        const loadVal = (severity * 0.6 + 20).toFixed(0);
+        document.getElementById('gridLoad').textContent = loadVal + '%';
+        document.getElementById('gridLoad').className = `text-xs font-headline font-bold ${parseInt(loadVal) > 70 ? 'text-error' : 'text-primary'}`;
+
+        const loadHeights = [1, 0.75, 0.66, 1, 0.5, 0.33, 0.5, 0.75, 1].map(h => h * (0.3 + severity / 130));
+        loadHeights.forEach((h, i) => {
+            const bar = document.createElement('div');
+            bar.className = 'w-2 sparkline-bar bg-primary';
+            bar.style.opacity = 0.2 + h * 0.8;
+            bar.style.height = '0px';
+            loadSpark.appendChild(bar);
+            setTimeout(() => { bar.style.height = (h * 48) + 'px'; }, 300 + i * 60);
+        });
+
+        // ── Allocation Bars ──
+        const allocBars = document.getElementById('allocBars');
+        allocBars.innerHTML = '';
+        const entries = Object.entries(allocation).slice(0, 5);
+        const maxAlloc = Math.max(...entries.map(([,v]) => v), 1);
+        document.getElementById('totalAllocVal').textContent = totalAllocated.toFixed(1) + ' UNITS';
+
+        if (entries.length > 0) {
+            entries.forEach(([state, val], i) => {
+                const barW = (val / maxAlloc) * 100;
+                allocBars.innerHTML += `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[9px] text-on-surface">
+                            <span>${state.toUpperCase()}</span>
+                            <span>${val.toFixed(1)}</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-surface-container">
+                            <div class="alloc-bar h-full ${val > maxAlloc * 0.5 ? 'bg-secondary' : 'bg-primary'}" style="width: 0%;" data-target="${barW}%"></div>
+                        </div>
+                    </div>`;
+            });
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    document.querySelectorAll('.alloc-bar').forEach(b => b.style.width = b.dataset.target);
+                }, 300);
+            });
+        }
+
+        // ── System Logs ──
+        const logsEl = document.getElementById('sysLogs');
+        logsEl.innerHTML = '';
+        const now = new Date();
+        const logEntries = [
+            { time: -18, text: `GRID_SEVERITY_SET: ${severity}%`, type: 'warning' },
+            { time: -12, text: `${affectedStates.length} STATES AFFECTED`, type: affectedStates.length > 10 ? 'error' : 'info' },
+            { time: -8, text: `ALLOCATION_DISPATCHED: ${totalAllocated.toFixed(1)} UNITS`, type: 'success' },
+            { time: -5, text: recommendation.split('.')[0].toUpperCase(), type: severity >= 60 ? 'error' : 'success' },
+            { time: -1, text: 'HANDSHAKE_PROTOCOL_VERIFIED', type: 'info' },
+        ];
+        const colors = { info: 'text-tertiary border-outline-variant', success: 'text-secondary border-secondary', warning: 'text-primary border-primary', error: 'text-error border-error' };
+        logEntries.forEach((log, i) => {
+            const t = new Date(now.getTime() + log.time * 1000);
+            const ts = t.toLocaleTimeString('en-US', { hour12: false });
+            setTimeout(() => {
+                logsEl.innerHTML += `<div class="text-[9px] font-label ${colors[log.type]} bg-surface-container p-2 border-l-2 log-entry">
+                    [${ts}] ${log.text}
+                </div>`;
+            }, 400 + i * 200);
+        });
+
+        // ── AI Recommendation ──
+        document.getElementById('aiRec').textContent = recommendation.toUpperCase();
+
+        // ── Save to sessionStorage for Report page ──
+        sessionStorage.setItem('bre_sim_report', JSON.stringify({
+            scenario: 'power_shortage',
+            severity,
+            recommendation,
+            affected_states: affectedStates,
+            total_allocated: totalAllocated,
+            allocation,
+            available_units: available
+        }));
+
+        // ── Wire REPORTS button ──
+        document.getElementById('reportBtn').onclick = (e) => {
+            e.preventDefault();
+            window.location.href = '/report';
+        };
+    }
+
+    // Auto-run on load
+    runSimulation(initialSeverity);
+})();
+</script>
+</body></html>

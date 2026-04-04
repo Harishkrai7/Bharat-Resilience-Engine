@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BRE — Fuel Shortage Simulation</title>
+<meta name="description" content="Fuel Reserve Status Monitor — XGBoost-powered fuel shortage crisis simulation."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Inter:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "inverse-primary": "#8f4e00",
+                    "on-background": "#dfe2f3",
+                    "surface-bright": "#353946",
+                    "on-secondary": "#023a00",
+                    "background": "#0f131f",
+                    "surface-container-low": "#171b28",
+                    "on-secondary-container": "#d9ffc9",
+                    "primary-fixed-dim": "#ffb77a",
+                    "primary-fixed": "#ffdcc2",
+                    "surface-tint": "#ffb77a",
+                    "on-primary": "#4c2700",
+                    "secondary": "#72de5c",
+                    "surface-variant": "#313442",
+                    "on-surface-variant": "#c7c6cc",
+                    "surface": "#0f131f",
+                    "surface-container-lowest": "#0a0e1a",
+                    "secondary-container": "#078200",
+                    "surface-container-high": "#262a37",
+                    "error": "#ffb4ab",
+                    "on-error-container": "#ffdad6",
+                    "outline-variant": "#46464c",
+                    "surface-dim": "#0f131f",
+                    "on-primary-container": "#b96600",
+                    "on-error": "#690005",
+                    "primary-container": "#1b0a00",
+                    "tertiary": "#c6c6c7",
+                    "surface-container-highest": "#313442",
+                    "surface-container": "#1b1f2c",
+                    "on-surface": "#dfe2f3",
+                    "primary": "#ffb77a",
+                    "outline": "#909096",
+                    "error-container": "#93000a"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"
+                },
+                "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+                }
+            },
+        },
+    }
+</script>
+<style>
+    body { background-color: #0A0E1A; color: #C6C6C7; font-family: 'Inter', sans-serif; overflow-x: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .pixel-grid {
+        background-image: radial-gradient(rgba(144,144,150,0.05) 1px, transparent 0);
+        background-size: 8px 8px;
+    }
+    .gauge-needle { transform-origin: 50% 100%; transition: transform 1.2s cubic-bezier(0.4,0,0.2,1); }
+    .sim-overlay {
+        position: fixed; inset: 0; z-index: 999;
+        background: rgba(10,14,26,0.95);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center; gap: 16px;
+        transition: opacity 0.5s;
+    }
+    .sim-overlay.hidden { opacity: 0; pointer-events: none; }
+    .sim-overlay .spinner {
+        width: 40px; height: 40px;
+        border: 3px solid #313442; border-top-color: #FFB77A;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .supply-bar-fill { transition: width 1s ease-out; }
+    .flicker-on-click:active { opacity: 0.5; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #46464c; }
+</style>
+</head>
+<body class="pixel-grid">
+
+<!-- Loading Overlay -->
+<div class="sim-overlay" id="simOverlay">
+    <div class="spinner"></div>
+    <span class="font-headline text-xs tracking-[0.2em] text-[#FFB77A] uppercase">Running XGBoost Fuel Demand Model…</span>
+    <span class="text-[10px] text-outline font-mono">ANALYZING SUPPLY CHAIN TELEMETRY</span>
+</div>
+
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 flex justify-between items-center px-6 h-16 bg-[#0A0E1A] border-b-4 border-[#1A1F2E]">
+    <div class="flex items-center gap-4">
+        <a href="/dashboard" class="material-symbols-outlined text-outline text-sm hover:text-primary">arrow_back</a>
+        <div class="text-xl font-black text-[#FFB77A] tracking-widest font-['Space_Grotesk'] uppercase">SOVEREIGN COMMAND</div>
+    </div>
+    <div class="hidden md:flex items-center space-x-6">
+        <nav class="flex items-center space-x-6">
+            <a class="font-['Space_Grotesk'] uppercase tracking-[0.1em] text-xs font-bold text-[#FFB77A] border-b-2 border-[#FFB77A] pb-1" href="#">STATUS_MONITOR</a>
+            <a class="font-['Space_Grotesk'] uppercase tracking-[0.1em] text-xs font-bold text-[#C6C6C7] hover:bg-[#FFB77A] hover:text-[#0A0E1A] px-2 py-1" href="/dashboard">DASHBOARD</a>
+        </nav>
+        <div class="flex items-center space-x-4">
+            <span class="material-symbols-outlined text-[#FFB77A] cursor-pointer">notifications</span>
+            <span class="material-symbols-outlined text-[#FFB77A] cursor-pointer">settings</span>
+        </div>
+    </div>
+</header>
+
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-16 h-[calc(100vh-64px-48px)] flex flex-col bg-[#0F1425] w-64 border-r-4 border-[#1A1F2E] z-40 hidden md:flex">
+    <div class="bg-[#0A0E1A] p-4 mb-4">
+        <h2 class="text-[#72DE5C] text-lg font-bold font-['Space_Grotesk'] uppercase tracking-tighter">SCENARIO_SELECT</h2>
+        <p class="text-[#C7C6CC] text-[10px] uppercase opacity-70 font-['Space_Grotesk']">SECTOR_7_FUEL_GRID</p>
+    </div>
+    <nav class="flex-1 space-y-1">
+        <a href="/dashboard" class="text-[#C7C6CC] p-3 opacity-70 font-['Space_Grotesk'] uppercase text-[10px] tracking-tighter flex items-center hover:bg-[#1A1F2E] hover:text-[#72DE5C] cursor-pointer">
+            <span class="material-symbols-outlined mr-3 text-sm">bolt</span> POWER_GRID
+        </a>
+        <a href="/water-sim" class="text-[#C7C6CC] p-3 opacity-70 font-['Space_Grotesk'] uppercase text-[10px] tracking-tighter flex items-center hover:bg-[#1A1F2E] hover:text-[#72DE5C] cursor-pointer">
+            <span class="material-symbols-outlined mr-3 text-sm">water_drop</span> WATER_CRISIS
+        </a>
+        <a href="/cyber-sim" class="text-[#C7C6CC] p-3 opacity-70 font-['Space_Grotesk'] uppercase text-[10px] tracking-tighter flex items-center hover:bg-[#1A1F2E] hover:text-[#72DE5C] cursor-pointer">
+            <span class="material-symbols-outlined mr-3 text-sm">shield</span> CYBER_ATTACK
+        </a>
+        <div class="bg-[#FFB77A] text-[#0A0E1A] font-bold p-3 font-['Space_Grotesk'] uppercase text-[10px] tracking-tighter flex items-center cursor-default">
+            <span class="material-symbols-outlined mr-3 text-sm">local_gas_station</span> FUEL_RESERVES
+        </div>
+    </nav>
+    <!-- Severity Control -->
+    <div class="px-4 mb-4">
+        <label class="text-[10px] text-[#909096] tracking-[0.2em] block mb-2 font-['Space_Grotesk'] uppercase">SHORTAGE SEVERITY</label>
+        <input type="range" id="severitySlider" min="0" max="100" value="55"
+            class="w-full h-1 bg-surface-variant appearance-none cursor-pointer"
+            style="accent-color: #FFB77A;">
+        <div class="flex justify-between text-[9px] text-[#909096] mt-1 font-['Space_Grotesk']">
+            <span>0%</span>
+            <span id="severityValue" class="text-[#FFB77A] font-bold">55%</span>
+            <span>100%</span>
+        </div>
+    </div>
+    <button id="rerunBtn" class="m-4 bg-on-primary-container text-[#0A0E1A] font-black p-3 font-['Space_Grotesk'] uppercase text-xs tracking-widest flicker-on-click flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-sm">replay</span>
+        RE-RUN SIMULATION
+    </button>
+</aside>
+
+<!-- Main Content -->
+<main class="md:ml-64 mt-16 p-6 pb-24 min-h-screen">
+    <!-- Header Banner -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4 border-l-8 border-[#FFB77A] pl-6">
+        <div>
+            <h1 class="text-4xl font-black text-white font-['Space_Grotesk'] tracking-tighter leading-none mb-2">BHARAT RESILIENCE ENGINE</h1>
+            <div class="flex items-center gap-4">
+                <span class="px-2 py-0.5 text-[10px] font-bold font-['Space_Grotesk']" id="alertBadge">SCANNING…</span>
+                <span class="text-[#909096] text-[10px] font-mono tracking-widest uppercase">COORD: 28.6139° N, 77.2090° E</span>
+            </div>
+        </div>
+        <div class="text-right">
+            <p class="text-[10px] text-[#C7C6CC] font-bold font-['Space_Grotesk'] uppercase">SYSTEM TIME</p>
+            <p class="text-xl text-[#72DE5C] font-mono font-bold leading-none" id="sysTime">—</p>
+        </div>
+    </div>
+
+    <!-- FUEL RESERVE STATUS — Gauge Grid -->
+    <section class="grid grid-cols-1 lg:grid-cols-2 gap-4" id="gaugeSection">
+        <!-- Title Bar -->
+        <div class="lg:col-span-2 bg-[#1B1F2C] p-2 flex justify-between items-center">
+            <span class="text-[#FFB77A] font-bold text-sm font-['Space_Grotesk'] tracking-[0.2em] px-2">FUEL RESERVE STATUS</span>
+            <div class="flex gap-1" id="statusDots"></div>
+        </div>
+        <!-- Gauges rendered by JS -->
+        <div class="bg-[#171B28] p-8 flex flex-col items-center justify-center border-2 border-transparent relative" id="gauge0"></div>
+        <div class="bg-[#171B28] p-8 flex flex-col items-center justify-center border-2 border-transparent relative" id="gauge1"></div>
+        <div class="bg-[#171B28] p-8 flex flex-col items-center justify-center border-2 border-transparent relative" id="gauge2"></div>
+        <div class="bg-[#171B28] p-8 flex flex-col items-center justify-center border-2 border-transparent relative" id="gauge3"></div>
+    </section>
+
+    <!-- Secondary Info Cluster -->
+    <section class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Supply Pipeline Stats -->
+        <div class="md:col-span-2 bg-[#1B1F2C] p-4 border-r-8 border-[#1A1F2E]">
+            <div class="flex justify-between mb-4">
+                <h4 class="text-[10px] font-black text-[#72DE5C] tracking-widest uppercase">SUPPLY_PULSE — AFFECTED REGIONS</h4>
+                <span class="text-[10px] text-[#909096] font-mono" id="mapRef">MAP_REF: —</span>
+            </div>
+            <div class="space-y-4" id="supplyPulse">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+        <!-- Quick Action + AI Recommendation -->
+        <div class="flex flex-col gap-4">
+            <div class="bg-[#1B1F2C] p-4 flex-1">
+                <p class="text-[10px] font-bold text-[#FFB77A] uppercase mb-2">AI RECOMMENDATION</p>
+                <p class="text-xs text-white font-bold font-['Space_Grotesk'] leading-tight" id="aiRec">AWAITING DATA…</p>
+            </div>
+            <div class="bg-primary-container p-4 border-r-8 border-primary">
+                <p class="text-[10px] font-black text-primary uppercase mb-2">ALLOCATION SUMMARY</p>
+                <p class="text-xs text-on-primary font-bold font-['Space_Grotesk'] leading-tight mb-2" id="allocSummary">—</p>
+                <div class="flex gap-2">
+                    <span class="text-[10px] text-outline font-mono" id="totalAlloc">TOTAL: —</span>
+                </div>
+            </div>
+        </div>
+    </section>
+</main>
+
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-12 px-4 bg-[#0A0E1A] border-t-4 border-[#1A1F2E]">
+    <a href="/dashboard" class="flex flex-col items-center justify-center text-[#909096] p-2 cursor-pointer hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined text-lg">dashboard</span>
+        <span class="font-['Space_Grotesk'] uppercase text-[9px] font-medium">DASHBOARD</span>
+    </a>
+    <div class="flex flex-col items-center justify-center bg-[#72DE5C]/10 text-[#72DE5C] p-2">
+        <span class="material-symbols-outlined text-lg">vital_signs</span>
+        <span class="font-['Space_Grotesk'] uppercase text-[9px] font-medium">SYSTEM_PULSE</span>
+    </div>
+    <a href="/cyber-sim" class="flex flex-col items-center justify-center text-[#909096] p-2 cursor-pointer hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined text-lg">shield</span>
+        <span class="font-['Space_Grotesk'] uppercase text-[9px] font-medium">CYBER</span>
+    </a>
+    <a href="/water-sim" class="flex flex-col items-center justify-center text-[#909096] p-2 cursor-pointer hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined text-lg">water_drop</span>
+        <span class="font-['Space_Grotesk'] uppercase text-[9px] font-medium">WATER</span>
+    </a>
+    <a id="reportBtn" href="#" class="flex flex-col items-center justify-center text-[#909096] p-2 cursor-pointer hover:text-[#72DE5C]">
+        <span class="material-symbols-outlined text-lg">account_tree</span>
+        <span class="font-['Space_Grotesk'] uppercase text-[9px] font-medium">REPORTS</span>
+    </a>
+</nav>
+
+<script>
+(function() {
+    'use strict';
+
+    const BASE_URL = window.location.origin || 'http://localhost:5001';
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSeverity = parseInt(urlParams.get('severity')) || 55;
+    const severitySlider = document.getElementById('severitySlider');
+    severitySlider.value = initialSeverity;
+    document.getElementById('severityValue').textContent = initialSeverity + '%';
+
+    severitySlider.addEventListener('input', (e) => {
+        document.getElementById('severityValue').textContent = e.target.value + '%';
+    });
+
+    document.getElementById('rerunBtn').addEventListener('click', () => {
+        runSimulation(parseInt(severitySlider.value));
+    });
+
+    // Fuel sectors with base reserve percentages
+    const SECTORS = [
+        { name: 'MILITARY',           icon: 'military_tech', basePct: 82 },
+        { name: 'EMERGENCY SERVICES',  icon: 'local_hospital', basePct: 45 },
+        { name: 'TRANSPORT',          icon: 'local_shipping', basePct: 60 },
+        { name: 'INDUSTRY',           icon: 'factory',       basePct: 72 },
+    ];
+
+    async function runSimulation(severity) {
+        const overlay = document.getElementById('simOverlay');
+        overlay.classList.remove('hidden');
+        overlay.style.opacity = '1';
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/fuel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ severity, total_nodes: 200 })
+            });
+            const data = await res.json();
+            console.log('Fuel ML response:', data);
+
+            setTimeout(() => {
+                renderResults(data, severity);
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 800);
+        } catch (err) {
+            console.error('Fuel API error:', err);
+            overlay.querySelector('span:first-of-type').textContent = 'CONNECTION FAILED';
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 2000);
+        }
+    }
+
+    function renderResults(data, severity) {
+        const allocation = data.allocation || {};
+        const affectedStates = data.affected_states || [];
+        const totalAllocated = data.total_allocated || 0;
+        const recommendation = data.recommendation || 'Monitor situation.';
+        const available = data.available_units || (100 - severity);
+
+        // System time
+        document.getElementById('sysTime').textContent =
+            new Date().toLocaleTimeString('en-US', { hour12: false }) + '.' +
+            String(Date.now() % 1000).padStart(3, '0');
+
+        // Alert badge
+        const alertBadge = document.getElementById('alertBadge');
+        if (severity >= 60) {
+            alertBadge.textContent = 'CRITICAL ALERT: FUEL SHORTAGE';
+            alertBadge.className = 'bg-[#93000a] text-white px-2 py-0.5 text-[10px] font-bold font-[\'Space_Grotesk\']';
+        } else if (severity >= 30) {
+            alertBadge.textContent = 'WARNING: FUEL SUPPLY DEGRADED';
+            alertBadge.className = 'bg-[#6d3a00] text-[#FFB77A] px-2 py-0.5 text-[10px] font-bold font-[\'Space_Grotesk\']';
+        } else {
+            alertBadge.textContent = 'FUEL SUPPLY: NOMINAL';
+            alertBadge.className = 'bg-[#078200] text-white px-2 py-0.5 text-[10px] font-bold font-[\'Space_Grotesk\']';
+        }
+
+        // Status dots
+        const dots = document.getElementById('statusDots');
+        const numActive = severity >= 60 ? 1 : severity >= 30 ? 2 : 3;
+        dots.innerHTML = [0,1,2].map(i =>
+            `<div class="w-3 h-3 ${i < numActive ? 'bg-[#72DE5C]' : 'bg-[#1A1F2E]'}"></div>`
+        ).join('');
+
+        // ── Render Gauges ──
+        SECTORS.forEach((sector, idx) => {
+            const container = document.getElementById('gauge' + idx);
+            // Calculate reserve % affected by severity
+            const reservePct = Math.max(3, Math.min(100,
+                sector.basePct - (severity * (0.4 + idx * 0.15)) + (Math.random() * 8)
+            ));
+            const isCritical = reservePct < 25;
+            const isWarning = reservePct < 50;
+
+            // Needle angle: 0% = -90deg, 100% = 90deg
+            const needleAngle = ((reservePct / 100) * 180) - 90;
+
+            // Color logic
+            const needleColor = isCritical ? '#ffb4ab' : '#FFB77A';
+            const textColor = isCritical ? 'text-error animate-pulse' : 'text-white';
+            const labelColor = isCritical ? 'text-error' : 'text-[#909096]';
+
+            container.className = `bg-[#171B28] p-8 flex flex-col items-center justify-center relative ${
+                isCritical ? 'border-4 border-[#93000a] overflow-hidden' : 'border-2 border-transparent'
+            }`;
+
+            container.innerHTML = `
+                ${isCritical ? '<div class="absolute inset-0 bg-[#93000a]/10 pointer-events-none"></div>' : ''}
+                ${isCritical ? '<div class="absolute top-0 left-0 bg-[#93000a] text-white px-2 text-[8px] font-black uppercase z-10">CRITICAL_THREAT</div>' : ''}
+                <div class="relative w-48 h-24 overflow-hidden mb-4">
+                    <!-- Gauge Arc -->
+                    <div class="absolute bottom-0 left-0 w-48 h-48 border-[12px] border-[#93000a] rounded-full border-b-transparent border-l-transparent -rotate-45"></div>
+                    <div class="absolute bottom-0 left-0 w-48 h-48 border-[12px] border-[#078200] rounded-full border-t-transparent border-r-transparent -rotate-45"></div>
+                    <!-- Needle -->
+                    <div class="absolute bottom-0 left-1/2 w-1 h-20 gauge-needle -translate-x-1/2"
+                        style="background: ${needleColor}; transform: translateX(-50%) rotate(${needleAngle}deg);" id="needle${idx}"></div>
+                    <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full" style="background: ${needleColor};"></div>
+                </div>
+                <div class="text-center relative z-10">
+                    <h3 class="text-2xl font-black font-['Space_Grotesk'] mb-1 ${textColor}">${reservePct.toFixed(0)}%</h3>
+                    <p class="text-[10px] font-bold font-['Space_Grotesk'] uppercase tracking-[0.1em] ${labelColor}">${sector.name}</p>
+                </div>
+                <div class="absolute top-2 right-2 flex flex-col gap-1">
+                    <div class="w-1 h-1 ${isCritical ? 'bg-error' : 'bg-[#72DE5C]'}"></div>
+                    <div class="w-1 h-1 ${isWarning ? 'bg-[#1A1F2E]' : 'bg-[#72DE5C]'}"></div>
+                </div>
+            `;
+        });
+
+        // ── Supply Pulse — Affected Regions ──
+        const supplyPulse = document.getElementById('supplyPulse');
+        supplyPulse.innerHTML = '';
+        const allocEntries = Object.entries(allocation).slice(0, 6);
+        const maxAlloc = Math.max(...allocEntries.map(([,v]) => v), 1);
+
+        if (allocEntries.length === 0) {
+            // Use affected states with simulated values
+            affectedStates.slice(0, 6).forEach(state => {
+                const deficit = -(severity * (0.2 + Math.random() * 0.5)).toFixed(1);
+                const barW = Math.min(100, Math.abs(deficit) * 2);
+                const isNeg = deficit < -20;
+                supplyPulse.innerHTML += `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[10px] text-white">
+                            <span>${state.toUpperCase().replace(/ /g, '_')}</span>
+                            <span class="${isNeg ? 'text-error' : 'text-[#72DE5C]'}">${deficit}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-[#0A0E1A]">
+                            <div class="${isNeg ? 'bg-[#93000a]' : 'bg-[#72DE5C]'} h-full supply-bar-fill" style="width: 0%;" data-target="${barW}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        } else {
+            allocEntries.forEach(([state, value]) => {
+                const barW = (value / maxAlloc) * 100;
+                const isHigh = value > maxAlloc * 0.5;
+                supplyPulse.innerHTML += `
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[10px] text-white">
+                            <span>${state.toUpperCase().replace(/ /g, '_')}</span>
+                            <span>${value.toFixed(1)} UNITS</span>
+                        </div>
+                        <div class="w-full h-2 bg-[#0A0E1A]">
+                            <div class="${isHigh ? 'bg-[#72DE5C]' : 'bg-primary'} h-full supply-bar-fill" style="width: 0%;" data-target="${barW}%"></div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Animate supply bars
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                document.querySelectorAll('.supply-bar-fill').forEach(bar => {
+                    bar.style.width = bar.dataset.target;
+                });
+            }, 200);
+        });
+
+        document.getElementById('mapRef').textContent = `MAP_REF: SC-${String(Date.now() % 999).padStart(3, '0')}`;
+
+        // AI Recommendation
+        document.getElementById('aiRec').textContent = recommendation.toUpperCase();
+
+        // Allocation summary
+        const allocSummary = document.getElementById('allocSummary');
+        allocSummary.textContent = `${affectedStates.length} STATES AFFECTED — SEVERITY ${severity}%`;
+        document.getElementById('totalAlloc').textContent = `TOTAL ALLOCATED: ${totalAllocated.toFixed(1)} UNITS`;
+
+        // ── Save to sessionStorage for Report page ──
+        sessionStorage.setItem('bre_sim_report', JSON.stringify({
+            scenario: 'fuel_shortage',
+            severity,
+            recommendation,
+            affected_states: affectedStates,
+            total_allocated: totalAllocated,
+            allocation,
+            available_units: available
+        }));
+
+        // ── Wire REPORTS button ──
+        const reportBtn = document.getElementById('reportBtn');
+        if (reportBtn) {
+            reportBtn.onclick = (e) => {
+                e.preventDefault();
+                window.location.href = '/report';
+            };
+        }
+    }
+
+    // ── Auto-run ──
+    runSimulation(initialSeverity);
+})();
+</script>
+</body></html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BRE — Decision Flowchart Report</title>
+<meta name="description" content="AI-generated decision flowchart for crisis response based on ML model outputs."/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                colors: {
+                    "surface-container-highest": "#313442",
+                    "on-surface-variant": "#c7c6cc",
+                    "tertiary": "#c6c6c7",
+                    "surface-container-high": "#262a37",
+                    "secondary-container": "#078200",
+                    "outline-variant": "#46464c",
+                    "on-error-container": "#ffdad6",
+                    "surface-dim": "#0f131f",
+                    "surface-container-low": "#171b28",
+                    "background": "#0f131f",
+                    "outline": "#909096",
+                    "on-background": "#dfe2f3",
+                    "surface-container": "#1b1f2c",
+                    "on-primary": "#4c2700",
+                    "error-container": "#93000a",
+                    "surface-container-lowest": "#0a0e1a",
+                    "surface": "#0f131f",
+                    "error": "#ffb4ab",
+                    "on-surface": "#dfe2f3",
+                    "surface-variant": "#313442",
+                    "primary": "#ffb77a",
+                    "surface-bright": "#353946",
+                    "secondary": "#72de5c",
+                    "on-primary-container": "#b96600",
+                    "surface-tint": "#ffb77a",
+                    "on-secondary": "#023a00"
+                },
+                borderRadius: { DEFAULT: "0px", lg: "0px", xl: "0px", full: "0px" },
+                fontFamily: { headline: ["Space Grotesk"], body: ["Inter"], label: ["Space Grotesk"] }
+            }
+        }
+    }
+</script>
+<style>
+    body { background: #0a0e1a; overflow-x: hidden; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    .pixel-grid {
+        background-image: linear-gradient(to right, rgba(70,70,76,0.05) 1px, transparent 1px),
+                          linear-gradient(to bottom, rgba(70,70,76,0.05) 1px, transparent 1px);
+        background-size: 8px 8px;
+    }
+    /* Flowchart connector lines */
+    .connector-v { position: absolute; left: 50%; width: 2px; background: #46464c; transform: translateX(-50%); }
+    .connector-h { position: absolute; height: 2px; background: #46464c; top: 50%; }
+    .connector-arrow { position: absolute; left: 50%; transform: translateX(-50%); width: 0; height: 0;
+        border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 8px solid #72de5c; }
+
+    /* Flowchart node animations */
+    .flow-node { opacity: 0; transform: translateY(16px); transition: all 0.5s cubic-bezier(0.4,0,0.2,1); }
+    .flow-node.visible { opacity: 1; transform: translateY(0); }
+
+    /* Decision diamond */
+    .diamond { width: 160px; height: 160px; transform: rotate(45deg); }
+    .diamond-content { transform: rotate(-45deg); width: 200px; position: absolute; top: 50%; left: 50%; transform: rotate(-45deg) translate(-35%, -50%); }
+
+    /* Pulse glow on critical */
+    @keyframes critPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,180,171,0.3); } 50% { box-shadow: 0 0 20px 4px rgba(255,180,171,0.2); } }
+    .crit-pulse { animation: critPulse 2s infinite; }
+
+    /* Print styles */
+    @media print {
+        body { background: white; color: black; }
+        header, nav, .no-print { display: none !important; }
+        main { margin: 0 !important; padding: 16px !important; }
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #46464c; }
+</style>
+</head>
+<body class="text-on-surface font-body selection:bg-primary selection:text-on-primary">
+
+<!-- TOP APP BAR -->
+<header class="fixed top-0 w-full z-50 h-16 bg-[#0A0E1A] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex justify-between items-center px-6">
+    <div class="flex items-center gap-4">
+        <a id="backBtn" href="/dashboard" class="material-symbols-outlined text-outline text-sm hover:text-primary cursor-pointer">arrow_back</a>
+        <span class="text-xl font-bold text-primary tracking-tighter font-headline">BRE</span>
+        <div class="h-4 w-px bg-surface-container-highest"></div>
+        <span class="bg-secondary text-[#0A0E1A] px-2 py-0.5 font-label text-[10px] font-bold tracking-widest uppercase">DECISION FLOWCHART</span>
+    </div>
+    <div class="hidden md:flex items-center space-x-6">
+        <nav class="flex items-center space-x-4">
+            <a class="font-label uppercase tracking-[0.1em] text-xs font-bold text-primary border-b-2 border-primary pb-1" href="#">SYSTEM MONITORING</a>
+            <a class="font-label uppercase tracking-[0.1em] text-xs font-bold text-tertiary hover:bg-primary hover:text-[#0A0E1A] px-2 py-1" href="/dashboard">DASHBOARD</a>
+        </nav>
+        <button onclick="window.print()" class="no-print material-symbols-outlined text-primary hover:bg-primary hover:text-[#0A0E1A] p-2 cursor-pointer" title="Print Report">print</button>
+        <span class="material-symbols-outlined text-primary hover:bg-primary hover:text-[#0A0E1A] p-2 cursor-pointer">settings</span>
+    </div>
+</header>
+
+<!-- SIDE NAV -->
+<nav class="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 bg-[#0A0E1A] flex flex-col pt-8 space-y-2 z-40 no-print">
+    <div class="px-6 mb-6">
+        <h2 class="font-label uppercase text-xs tracking-widest text-secondary font-black">SCENARIOS</h2>
+        <p class="text-[10px] text-tertiary tracking-tighter" id="sectorLabel">SECTOR — REPORT</p>
+    </div>
+    <a href="/power-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-label uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-secondary" id="navPower">
+        <span class="material-symbols-outlined">bolt</span><span>POWER GRID</span>
+    </a>
+    <a href="/cyber-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-label uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-secondary" id="navCyber">
+        <span class="material-symbols-outlined">shield</span><span>CYBER ATTACK</span>
+    </a>
+    <a href="/fuel-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-label uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-secondary" id="navFuel">
+        <span class="material-symbols-outlined">local_gas_station</span><span>FUEL DEPOT</span>
+    </a>
+    <a href="/water-sim" class="text-[#C6C6C7] px-4 py-4 flex items-center gap-3 font-label uppercase text-xs tracking-widest hover:bg-[#1A1F2E] hover:text-secondary" id="navWater">
+        <span class="material-symbols-outlined">water_drop</span><span>WATER RES</span>
+    </a>
+    <div class="bg-[#1A1F2E] text-primary border-r-8 border-primary px-4 py-4 flex items-center gap-3 font-label uppercase text-xs tracking-widest cursor-default">
+        <span class="material-symbols-outlined">account_tree</span><span>DECISION FLOW</span>
+    </div>
+    <div class="mt-auto px-6 pb-8">
+        <a href="/dashboard" class="w-full bg-on-primary-container text-[#0A0E1A] font-black p-3 font-label text-xs tracking-widest hover:bg-primary flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">dashboard</span>
+            DASHBOARD
+        </a>
+    </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="ml-64 mr-80 pt-16 min-h-screen pixel-grid bg-surface p-8">
+    <!-- Flowchart Canvas -->
+    <div class="flex flex-col items-center relative" id="flowchartCanvas">
+        <!-- Populated by JS -->
+    </div>
+</main>
+
+<!-- RIGHT PANEL — Model Logic -->
+<aside class="fixed right-0 top-16 h-[calc(100vh-64px)] w-80 bg-[#0F1424] border-l-2 border-surface-container-highest z-40 p-6 flex flex-col space-y-6 overflow-y-auto">
+    <div>
+        <h3 class="font-headline font-black text-on-surface uppercase tracking-tighter text-sm mb-4">MODEL LOGIC</h3>
+        <div class="text-[10px] font-label text-tertiary uppercase tracking-widest mb-4" id="modelSubtitle">ML WEIGHTS BREAKDOWN</div>
+        <div class="space-y-4" id="modelLogic">
+            <!-- Populated by JS -->
+        </div>
+    </div>
+    <div>
+        <h3 class="font-headline font-black text-on-surface uppercase tracking-tighter text-sm mb-4">ACTIVE TELEMETRY</h3>
+        <div class="bg-surface-container-low p-4 space-y-3 mb-4">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">SCENARIO</span>
+                <span class="text-xs font-headline font-bold text-primary" id="telScenario">—</span>
+            </div>
+        </div>
+        <div class="bg-surface-container-low p-4 space-y-3 mb-4">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">SEVERITY</span>
+                <span class="text-xs font-headline font-bold text-error" id="telSeverity">—</span>
+            </div>
+            <div class="h-2 bg-surface-container">
+                <div class="h-full bg-error" id="sevBar" style="width: 0%;"></div>
+            </div>
+        </div>
+        <div class="bg-surface-container-low p-4 space-y-3 mb-4">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">TOTAL ALLOCATED</span>
+                <span class="text-xs font-headline font-bold text-secondary" id="telAlloc">—</span>
+            </div>
+        </div>
+        <div class="bg-surface-container-low p-4 space-y-3">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-label text-tertiary uppercase">REGIONS IMPACTED</span>
+                <span class="text-xs font-headline font-bold text-primary" id="telRegions">—</span>
+            </div>
+        </div>
+    </div>
+    <div class="bg-primary-container p-4 border-t-4 border-primary">
+        <p class="text-[10px] font-label text-primary uppercase tracking-widest mb-2">AI CONFIDENCE</p>
+        <p class="text-2xl font-headline font-black text-on-surface" id="aiConfidence">—</p>
+        <div class="h-2 bg-surface-container mt-2">
+            <div class="h-full bg-secondary" id="confBar" style="width: 0%;"></div>
+        </div>
+    </div>
+</aside>
+
+<!-- BOTTOM BAR -->
+<footer class="fixed bottom-0 w-full z-50 h-10 bg-[#0A0E1A] border-t-2 border-[#1A1F2E] flex justify-start items-center overflow-hidden no-print">
+    <div class="bg-secondary text-[#0A0E1A] h-full px-6 flex items-center justify-center font-label uppercase text-[10px] gap-2">
+        <span class="material-symbols-outlined text-sm">account_tree</span>
+        <span>DECISION FLOW ACTIVE</span>
+    </div>
+    <div class="ml-auto px-6 flex items-center gap-4">
+        <span class="text-[10px] font-label text-tertiary uppercase tracking-widest">
+            AI_ANALYSIS: <span class="text-secondary" id="footerStatus">EXECUTING TACTICAL OPTIMIZATION PROTOCOL…</span>
+        </span>
+        <span class="text-[10px] font-mono text-outline" id="footerCoords">LAT: — LNG: —</span>
+    </div>
+</footer>
+
+<script>
+(function() {
+    'use strict';
+
+    // ── Read simulation data from sessionStorage ──
+    const simData = JSON.parse(sessionStorage.getItem('bre_sim_report') || '{}');
+    const scenario   = simData.scenario   || 'power_shortage';
+    const severity   = simData.severity   || 50;
+    const recommendation = simData.recommendation || 'Monitor situation. Maintain backup systems.';
+    const affectedStates = simData.affected_states || ['Maharashtra', 'Delhi', 'Gujarat'];
+    const totalAllocated = simData.total_allocated || 0;
+    const allocation     = simData.allocation || {};
+    const available      = simData.available_units || (100 - severity);
+
+    // ── Scenario config ──
+    const SCENARIOS = {
+        power_shortage: {
+            label: 'POWER GRID', icon: 'bolt', color: '#FFB77A', simPage: '/power-sim',
+            navId: 'navPower',
+            phases: ['ASSESS GRID LOAD', 'IDENTIFY FAILURE NODES', 'REROUTE POWER', 'ACTIVATE BACKUP', 'STABILIZE GRID'],
+            modelFactors: [
+                { id: '01', title: 'DEMAND SURGE', desc: 'Peak load analysis against capacity threshold.' },
+                { id: '02', title: 'CASCADING FAILURE', desc: 'Predictive model for node-to-node failure propagation.' },
+                { id: '03', title: 'BACKUP CAPACITY', desc: 'Available generator reserves vs. deficit gap.' },
+                { id: '04', title: 'WEATHER IMPACT', desc: 'Real-time precipitation & temperature effect on grid load.' },
+            ]
+        },
+        cyber_attack: {
+            label: 'CYBER ATTACK', icon: 'shield', color: '#ff4444', simPage: '/cyber-sim',
+            navId: 'navCyber',
+            phases: ['DETECT INTRUSION', 'ISOLATE COMPROMISED NODES', 'ANALYZE THREAT VECTORS', 'DEPLOY COUNTERMEASURES', 'RESTORE INTEGRITY'],
+            modelFactors: [
+                { id: '01', title: 'ANOMALY SCORE', desc: 'Isolation Forest confidence on packet anomalies.' },
+                { id: '02', title: 'ATTACK VECTOR', desc: 'SYN_FLOOD, DDoS, RANSOM_LOAD probability matrix.' },
+                { id: '03', title: 'NETWORK TOPOLOGY', desc: 'Critical path analysis for node isolation strategy.' },
+                { id: '04', title: 'ENCRYPTION STATUS', desc: 'End-to-end encryption verification across segments.' },
+            ]
+        },
+        water_management: {
+            label: 'WATER CRISIS', icon: 'water_drop', color: '#1a6eb5', simPage: '/water-sim',
+            navId: 'navWater',
+            phases: ['ASSESS RESERVOIR LEVELS', 'MAP PIPELINE INTEGRITY', 'OPTIMIZE DISTRIBUTION', 'DEPLOY EMERGENCY SUPPLY', 'MONITOR RECOVERY'],
+            modelFactors: [
+                { id: '01', title: 'PROXIMITY BIAS', desc: 'Nodes within 50km receive priority factor of 1.4x for immediate deployment.' },
+                { id: '02', title: 'RISK DECAY', desc: 'Predictive algorithms apply a linear decay to risk levels every 180 minutes.' },
+                { id: '03', title: 'RESOURCE ELASTICITY', desc: 'Calculating the P(deploy) based on cost and surge demand (α = 0.83).' },
+                { id: '04', title: 'EVAPORATION IMPACT', desc: 'Real-time precipitation data shifts reservoir weight by ±20%.' },
+            ]
+        },
+        fuel_shortage: {
+            label: 'FUEL SHORTAGE', icon: 'local_gas_station', color: '#FFB77A', simPage: '/fuel-sim',
+            navId: 'navFuel',
+            phases: ['AUDIT RESERVE STOCKS', 'PRIORITIZE CRITICAL SECTORS', 'OPTIMIZE TRANSPORT ROUTES', 'PREDICT DEPLETION', 'INITIATE RECOVERY'],
+            modelFactors: [
+                { id: '01', title: 'SECTOR PRIORITY', desc: 'Military & Emergency Services weighted 2.5x over commercial.' },
+                { id: '02', title: 'SUPPLY CHAIN LATENCY', desc: 'XGBoost model predicting delivery delays across distribution hubs.' },
+                { id: '03', title: 'DEPLETION CURVE', desc: 'Exponential decay model forecasting sector-level fuel availability.' },
+                { id: '04', title: 'ROUTE OPTIMIZATION', desc: 'Linear programming for minimum-cost fuel delivery logistics.' },
+            ]
+        },
+    };
+
+    const config = SCENARIOS[scenario] || SCENARIOS.power_shortage;
+
+    // ── Set back button ──
+    document.getElementById('backBtn').href = config.simPage + '?severity=' + severity;
+
+    // ── Highlight active nav ──
+    const activeNav = document.getElementById(config.navId);
+    if (activeNav) {
+        activeNav.className = 'bg-[#1A1F2E] text-secondary border-r-8 border-secondary px-4 py-4 flex items-center gap-3 font-label uppercase text-xs tracking-widest cursor-default';
+    }
+    document.getElementById('sectorLabel').textContent = config.label + ' — REPORT';
+
+    // ── Telemetry panel ──
+    document.getElementById('telScenario').textContent = config.label;
+    document.getElementById('telSeverity').textContent = severity + '%';
+    document.getElementById('sevBar').style.width = severity + '%';
+    document.getElementById('telAlloc').textContent = totalAllocated.toFixed(1) + ' UNITS';
+    document.getElementById('telRegions').textContent = affectedStates.length + ' STATES';
+    const confidence = Math.max(50, 100 - severity * 0.3 + Math.random() * 10).toFixed(1);
+    document.getElementById('aiConfidence').textContent = confidence + '%';
+    document.getElementById('confBar').style.width = confidence + '%';
+    document.getElementById('footerCoords').textContent = 'LAT: 28.6139° N  LNG: 77.2090° E  SEV: ' + severity;
+
+    // ── Model Logic Panel ──
+    const modelLogic = document.getElementById('modelLogic');
+    config.modelFactors.forEach(f => {
+        modelLogic.innerHTML += `
+            <div class="bg-surface-container p-3 border-l-4 border-secondary">
+                <div class="flex items-start gap-2">
+                    <span class="text-secondary font-headline font-black text-sm">${f.id}</span>
+                    <div>
+                        <p class="text-xs font-headline font-bold text-on-surface">${f.title}:</p>
+                        <p class="text-[10px] text-on-surface-variant mt-1 leading-relaxed">${f.desc}</p>
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    // ── Parse recommendation into action steps ──
+    function parseRecommendation(rec) {
+        // Split by common delimiters
+        const parts = rec.split(/[.!;]+/).map(s => s.trim()).filter(s => s.length > 3);
+        if (parts.length < 2) {
+            // Create generic steps from the phases
+            return config.phases.map((p, i) => ({
+                label: p,
+                detail: i === 0 ? rec : `Execute ${p.toLowerCase()} protocol.`
+            }));
+        }
+        // Map recommendation parts to flowchart steps
+        const steps = [];
+        parts.forEach((part, i) => {
+            const phase = config.phases[i] || `STEP ${i + 1}`;
+            steps.push({ label: phase, detail: part.toUpperCase() });
+        });
+        // Always have at least the 5 phases
+        while (steps.length < config.phases.length) {
+            steps.push({
+                label: config.phases[steps.length],
+                detail: `EXECUTE ${config.phases[steps.length]} PROTOCOL`
+            });
+        }
+        return steps;
+    }
+
+    const steps = parseRecommendation(recommendation);
+
+    // ── Render Flowchart ──
+    const canvas = document.getElementById('flowchartCanvas');
+
+    // 1. START NODE — Problem Identified
+    const isCritical = severity >= 60;
+    const isWarning = severity >= 30;
+    const statusLabel = isCritical ? 'CRITICAL' : isWarning ? 'WARNING' : 'STABLE';
+    const statusColor = isCritical ? 'bg-error-container border-error text-error' : isWarning ? 'border-primary text-primary' : 'border-secondary text-secondary';
+
+    canvas.innerHTML = `
+        <!-- START: Problem Identified -->
+        <div class="flow-node mb-2" data-delay="0">
+            <div class="bg-surface-container-high border-2 border-secondary px-12 py-4 text-center" style="clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);">
+                <span class="font-headline font-black text-secondary text-sm tracking-widest">${config.label} CRISIS DETECTED</span>
+            </div>
+        </div>
+        <div class="flow-node mb-2" data-delay="100">
+            <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-secondary mx-auto"></div>
+        </div>
+
+        <!-- DECISION: Severity Check -->
+        <div class="flow-node mb-2" data-delay="200">
+            <div class="relative mx-auto" style="width: 180px; height: 180px;">
+                <div class="absolute inset-0 border-2 ${statusColor} ${isCritical ? 'crit-pulse' : ''}" style="transform: rotate(45deg);"></div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                    <span class="text-[9px] font-label text-outline tracking-widest">SEVERITY CHECK</span>
+                    <span class="font-headline font-black text-lg text-on-surface">${severity}%</span>
+                    <span class="text-[10px] font-label font-bold ${isCritical ? 'text-error' : isWarning ? 'text-primary' : 'text-secondary'}">${statusLabel}</span>
+                </div>
+            </div>
+        </div>
+        <div class="flow-node mb-2" data-delay="300">
+            <div class="flex items-center justify-center gap-2 text-[9px] font-label">
+                <span class="text-secondary">YES ▸</span>
+                <span class="text-outline">THRESHOLD EXCEEDED</span>
+            </div>
+            <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-secondary mx-auto"></div>
+        </div>
+
+        <!-- PROCESS: Main Analysis -->
+        <div class="flow-node mb-2" data-delay="400">
+            <div class="bg-surface-container border-l-4 border-primary px-8 py-4 text-center max-w-sm mx-auto">
+                <span class="text-[9px] font-label text-primary tracking-widest block mb-1">SYSTEM PROTOCOL #1</span>
+                <span class="font-headline font-bold text-on-surface text-sm">${steps[0].label}</span>
+                <p class="text-[10px] text-on-surface-variant mt-2 leading-relaxed">${steps[0].detail}</p>
+            </div>
+        </div>
+        <div class="flow-node mb-2" data-delay="500">
+            <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-primary mx-auto"></div>
+        </div>
+
+        <!-- DECISION: Resource Availability -->
+        <div class="flow-node mb-2" data-delay="600">
+            <div class="relative mx-auto" style="width: 180px; height: 180px;">
+                <div class="absolute inset-0 border-2 border-primary" style="transform: rotate(45deg);"></div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+                    <span class="text-[9px] font-label text-outline tracking-widest">RESOURCE</span>
+                    <span class="font-headline font-black text-sm text-on-surface">AVAILABILITY</span>
+                    <span class="text-[10px] font-label text-primary">${available} UNITS</span>
+                </div>
+            </div>
+        </div>
+        <div class="flow-node mb-2" data-delay="700">
+            <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-secondary mx-auto"></div>
+        </div>
+
+        <!-- Parallel action branches -->
+        <div class="flow-node mb-2 w-full max-w-3xl" data-delay="800">
+            <div class="grid grid-cols-2 gap-6">
+                <div class="bg-surface-container border-l-4 border-secondary px-6 py-4">
+                    <span class="text-[9px] font-label text-secondary tracking-widest block mb-1">ACTION PROTOCOL #2</span>
+                    <span class="font-headline font-bold text-on-surface text-sm">${steps[1].label}</span>
+                    <p class="text-[10px] text-on-surface-variant mt-2 leading-relaxed">${steps[1].detail}</p>
+                </div>
+                <div class="bg-surface-container border-l-4 border-secondary px-6 py-4">
+                    <span class="text-[9px] font-label text-secondary tracking-widest block mb-1">ACTION PROTOCOL #3</span>
+                    <span class="font-headline font-bold text-on-surface text-sm">${steps[2].label}</span>
+                    <p class="text-[10px] text-on-surface-variant mt-2 leading-relaxed">${steps[2].detail}</p>
+                </div>
+            </div>
+        </div>
+        <div class="flow-node mb-2" data-delay="900">
+            <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-primary mx-auto"></div>
+        </div>
+
+        <!-- Remaining sequential steps -->
+        ${steps.slice(3).map((step, i) => `
+            <div class="flow-node mb-2" data-delay="${1000 + i * 200}">
+                <div class="bg-surface-container border-l-4 ${i % 2 === 0 ? 'border-primary' : 'border-secondary'} px-8 py-4 text-center max-w-sm mx-auto">
+                    <span class="text-[9px] font-label ${i % 2 === 0 ? 'text-primary' : 'text-secondary'} tracking-widest block mb-1">PROTOCOL #${i + 4}</span>
+                    <span class="font-headline font-bold text-on-surface text-sm">${step.label}</span>
+                    <p class="text-[10px] text-on-surface-variant mt-2 leading-relaxed">${step.detail}</p>
+                </div>
+            </div>
+            <div class="flow-node mb-2" data-delay="${1100 + i * 200}">
+                <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+                <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-secondary mx-auto"></div>
+            </div>
+        `).join('')}
+
+        <!-- Affected Regions -->
+        <div class="flow-node mb-2 w-full max-w-3xl" data-delay="${1400}">
+            <div class="bg-surface-container-high border-2 border-outline-variant p-4">
+                <p class="text-[9px] font-label text-primary tracking-widest mb-3">IMPACTED REGIONS — ${affectedStates.length} STATES</p>
+                <div class="flex flex-wrap gap-2">
+                    ${affectedStates.slice(0, 12).map(s => `
+                        <span class="bg-surface-container px-2 py-1 text-[9px] font-label text-on-surface-variant border border-outline-variant">${s.toUpperCase()}</span>
+                    `).join('')}
+                    ${affectedStates.length > 12 ? `<span class="bg-error-container px-2 py-1 text-[9px] font-label text-error border border-error">+${affectedStates.length - 12} MORE</span>` : ''}
+                </div>
+            </div>
+        </div>
+        <div class="flow-node mb-2" data-delay="${1500}">
+            <div class="h-8 w-0.5 bg-outline-variant mx-auto"></div>
+            <div class="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-secondary mx-auto"></div>
+        </div>
+
+        <!-- END: Resolution -->
+        <div class="flow-node mb-16" data-delay="${1600}">
+            <div class="bg-secondary/10 border-2 border-secondary px-12 py-4 text-center" style="clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);">
+                <span class="font-headline font-black text-secondary text-sm tracking-widest">CRISIS RESOLVED</span>
+            </div>
+        </div>
+    `;
+
+    // ── Animate flow nodes sequentially ──
+    const nodes = document.querySelectorAll('.flow-node');
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const delay = parseInt(entry.target.dataset.delay) || 0;
+                setTimeout(() => entry.target.classList.add('visible'), delay);
+            }
+        });
+    }, { threshold: 0.1 });
+
+    nodes.forEach(node => observer.observe(node));
+
+    // ── Footer ──
+    setTimeout(() => {
+        document.getElementById('footerStatus').textContent =
+            `STATUS: ${affectedStates.length} STATES | SEVERITY: ${severity}% | ALLOCATED: ${totalAllocated.toFixed(1)} UNITS`;
+    }, 2000);
+
+})();
+</script>
+</body></html>

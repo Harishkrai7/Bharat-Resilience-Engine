@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BRE — Cyber Attack Simulation</title>
+<meta name="description" content="Grid Node Status — Cyber Attack Scenario simulation with real-time ML-powered anomaly detection." />
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;800;900&family=Inter:wght@400;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .binary-flicker {
+        animation: flicker 0.15s infinite alternate;
+    }
+    @keyframes flicker {
+        0% { opacity: 0.8; }
+        100% { opacity: 1; }
+    }
+    .pixel-grid {
+        background-image: radial-gradient(#46464c 1px, transparent 1px);
+        background-size: 16px 16px;
+        opacity: 0.05;
+    }
+    body {
+        background-color: #0A0E1A;
+        color: #dfe2f3;
+        overflow: hidden;
+    }
+    @keyframes scanline {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100%); }
+    }
+    .scan-line {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, #72DE5C, transparent);
+        opacity: 0.4;
+        animation: scanline 3s linear infinite;
+        pointer-events: none;
+        z-index: 15;
+    }
+    .node-pulse { animation: nodePulse 1.5s ease-in-out infinite; }
+    @keyframes nodePulse {
+        0%, 100% { box-shadow: 0 0 4px currentColor; }
+        50% { box-shadow: 0 0 12px currentColor, 0 0 20px currentColor; }
+    }
+    /* Loading overlay */
+    .sim-overlay {
+        position: fixed; inset: 0; z-index: 999;
+        background: rgba(10, 14, 26, 0.95);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        gap: 16px;
+        transition: opacity 0.5s;
+    }
+    .sim-overlay.hidden { opacity: 0; pointer-events: none; }
+    .sim-overlay .spinner {
+        width: 40px; height: 40px;
+        border: 3px solid #313442;
+        border-top-color: #FFB77A;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* Threat bar animation */
+    .threat-bar-fill { transition: width 1s ease-out; }
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #46464c; }
+</style>
+<script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "surface-variant": "#313442",
+                    "primary-container": "#1b0a00",
+                    "on-secondary-container": "#d9ffc9",
+                    "error": "#ffb4ab",
+                    "surface-container-low": "#171b28",
+                    "tertiary": "#c6c6c7",
+                    "surface-container-highest": "#313442",
+                    "secondary-fixed": "#8dfc75",
+                    "primary-fixed-dim": "#ffb77a",
+                    "inverse-primary": "#8f4e00",
+                    "on-tertiary": "#2f3131",
+                    "primary-fixed": "#ffdcc2",
+                    "surface": "#0f131f",
+                    "on-surface-variant": "#c7c6cc",
+                    "tertiary-fixed-dim": "#c6c6c7",
+                    "secondary-fixed-dim": "#72de5c",
+                    "on-surface": "#dfe2f3",
+                    "surface-tint": "#ffb77a",
+                    "secondary": "#72de5c",
+                    "error-container": "#93000a",
+                    "surface-container": "#1b1f2c",
+                    "primary": "#ffb77a",
+                    "on-error": "#690005",
+                    "outline-variant": "#46464c",
+                    "on-primary": "#4c2700",
+                    "surface-bright": "#353946",
+                    "on-secondary": "#023a00",
+                    "surface-container-lowest": "#0a0e1a",
+                    "surface-container-high": "#262a37",
+                    "background": "#0f131f",
+                    "outline": "#909096",
+                    "on-primary-container": "#b96600",
+                    "surface-dim": "#0f131f",
+                    "inverse-surface": "#dfe2f3"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "0px"
+                },
+                "fontFamily": {
+                    "headline": ["Space Grotesk"],
+                    "body": ["Inter"],
+                    "label": ["Space Grotesk"]
+                }
+            },
+        },
+    }
+</script>
+</head>
+<body class="font-body selection:bg-primary selection:text-on-primary">
+
+<!-- Simulation Loading Overlay -->
+<div class="sim-overlay" id="simOverlay">
+    <div class="spinner"></div>
+    <span class="font-headline text-xs tracking-[0.2em] text-[#FFB77A] uppercase">Running Isolation Forest Model…</span>
+    <span class="text-[10px] text-outline font-mono">ANALYZING 200 NETWORK NODES</span>
+</div>
+
+<div class="fixed inset-0 pixel-grid pointer-events-none z-0"></div>
+
+<!-- TopAppBar -->
+<header class="bg-[#0A0E1A] text-[#FFB77A] font-['Space_Grotesk'] tracking-[0.1em] uppercase border-b-4 border-[#1A1F2E] flex justify-between items-center w-full px-6 h-16 fixed top-0 left-0 z-50">
+    <div class="flex items-center gap-4">
+        <a href="/dashboard" class="flex items-center gap-2 hover:opacity-80">
+            <span class="material-symbols-outlined text-sm text-outline">arrow_back</span>
+        </a>
+        <span class="text-2xl font-black text-[#FFB77A]">BRE</span>
+        <div class="h-8 w-px bg-outline-variant opacity-30"></div>
+        <span class="text-xs font-bold">SOVEREIGN COMMAND CENTER</span>
+    </div>
+    <div class="flex items-center gap-6">
+        <span class="material-symbols-outlined animate-pulse text-[#FFB77A]">sensors</span>
+        <span class="material-symbols-outlined animate-pulse text-[#FFB77A]">terminal</span>
+        <div id="threatBadge" class="bg-surface-variant px-3 py-1 text-[10px] font-black border border-outline-variant">
+            THREAT LEVEL: SCANNING…
+        </div>
+    </div>
+</header>
+
+<!-- SideNavBar -->
+<aside class="bg-[#0F1425] text-[#FFB77A] font-['Space_Grotesk'] text-xs font-bold tracking-widest uppercase fixed left-0 top-16 h-[calc(100vh-104px)] flex flex-col pt-8 w-64 z-40">
+    <div class="px-6 mb-8">
+        <h2 class="text-lg font-black text-[#FFB77A]">SCENARIOS</h2>
+        <p class="text-[10px] text-on-surface-variant tracking-[0.2em]">SECTOR-SPECIFIC THREATS</p>
+    </div>
+    <nav class="flex flex-col gap-1">
+        <a class="text-[#C7C6CC] px-4 py-3 flex items-center gap-3 hover:bg-[#1A1F2E] transition-none" href="/dashboard">
+            <span class="material-symbols-outlined">bolt</span>
+            <span>POWER GRID ATTACK</span>
+        </a>
+        <a class="text-[#C7C6CC] px-4 py-3 flex items-center gap-3 hover:bg-[#1A1F2E] transition-none" href="/dashboard">
+            <span class="material-symbols-outlined">water_drop</span>
+            <span>WATER LOGISTICS</span>
+        </a>
+        <a class="bg-[#FFB77A] text-[#0A0E1A] px-4 py-3 flex items-center gap-3 transition-none active:scale-95" href="#">
+            <span class="material-symbols-outlined">shield</span>
+            <span>CYBER ATTACK</span>
+        </a>
+        <a class="text-[#C7C6CC] px-4 py-3 flex items-center gap-3 hover:bg-[#1A1F2E] transition-none" href="/dashboard">
+            <span class="material-symbols-outlined">local_gas_station</span>
+            <span>FUEL SHORTAGE</span>
+        </a>
+    </nav>
+    <!-- Severity Control -->
+    <div class="px-6 mt-8">
+        <label class="text-[10px] text-outline tracking-[0.2em] block mb-2">ATTACK SEVERITY</label>
+        <input type="range" id="severitySlider" min="0" max="100" value="60"
+            class="w-full h-1 bg-surface-variant appearance-none cursor-pointer accent-[#dc3545]"
+            style="accent-color: #dc3545;">
+        <div class="flex justify-between text-[9px] text-outline mt-1">
+            <span>0%</span>
+            <span id="severityValue" class="text-[#dc3545] font-bold">60%</span>
+            <span>100%</span>
+        </div>
+        <button id="rerunBtn"
+            class="w-full mt-4 bg-[#dc3545] text-white px-4 py-2 text-[10px] font-black tracking-widest hover:bg-[#ff4d5e] transition-none flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">replay</span>
+            RE-RUN SIMULATION
+        </button>
+    </div>
+    <div class="mt-auto p-6 border-t border-outline-variant/20">
+        <div class="flex items-center gap-2 mb-2 text-on-surface-variant">
+            <span class="material-symbols-outlined text-[14px]">location_on</span>
+            <span class="text-[10px]">NEW DELHI HQ</span>
+        </div>
+        <div class="text-[9px] font-mono text-outline leading-tight">
+            LAT: 28.6139° N<br/>
+            LONG: 77.2090° E
+        </div>
+    </div>
+</aside>
+
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-8 h-[calc(100vh-104px)] overflow-hidden relative z-10 flex flex-col gap-6">
+    <!-- GRID NODE STATUS SECTION -->
+    <section class="flex-1 border-2 border-error bg-surface-container-lowest relative flex flex-col">
+        <div class="scan-line"></div>
+        <!-- Header Bar -->
+        <div class="bg-surface-container-highest flex items-center justify-between px-4 py-2 border-b border-error">
+            <div class="flex items-center gap-3">
+                <span id="statusDot" class="w-2 h-2 bg-[#dc3545] rounded-full animate-pulse shadow-[0_0_8px_#dc3545]"></span>
+                <h3 class="font-headline font-black text-sm tracking-widest text-on-surface">GRID NODE STATUS</h3>
+            </div>
+            <div class="flex items-center gap-4 text-[10px] font-mono text-outline">
+                <span>UPTIME: <span id="uptimeVal">—</span></span>
+                <span>PACKET_LOSS: <span id="packetLossVal">—</span></span>
+                <span class="text-primary">ENCRYPTION: AES-256</span>
+            </div>
+        </div>
+        <!-- Network Graph Visualization -->
+        <div class="flex-1 relative overflow-hidden" id="nodeContainer">
+            <svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20" id="edgesSvg"></svg>
+            <div class="relative w-full h-full" id="nodesLayer"></div>
+        </div>
+        <!-- Stats Bar -->
+        <div class="bg-surface-container h-12 flex items-center px-8 justify-between border-t border-outline-variant/30">
+            <div class="flex gap-12 font-mono text-xs tracking-wider">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 bg-[#138808]"></span>
+                    <span class="text-[#138808] font-bold"><span id="safeCount">—</span> SAFE</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 bg-[#dc3545] animate-pulse"></span>
+                    <span class="text-[#dc3545] font-bold"><span id="compCount">—</span> COMPROMISED</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 bg-outline"></span>
+                    <span class="text-outline font-bold"><span id="isoCount">—</span> ISOLATED</span>
+                </div>
+            </div>
+            <div class="text-[10px] font-bold text-on-surface-variant flex items-center gap-2" id="scanTimer">
+                <span class="material-symbols-outlined text-sm">history</span>
+                LAST SCAN: —
+            </div>
+        </div>
+    </section>
+
+    <!-- DATA METRICS ROW -->
+    <div class="grid grid-cols-4 gap-6 h-32">
+        <div class="bg-surface-container p-4 flex flex-col justify-between border-r-4 border-primary">
+            <span class="text-[10px] font-black text-outline">RESOURCE LOAD</span>
+            <div class="text-2xl font-headline font-black text-primary" id="resourceLoad">—</div>
+            <div class="w-full h-1 bg-surface-variant">
+                <div class="h-full bg-primary threat-bar-fill" id="resourceBar" style="width:0%"></div>
+            </div>
+        </div>
+        <div class="bg-surface-container p-4 flex flex-col justify-between">
+            <span class="text-[10px] font-black text-outline">STABILIZATION RATE</span>
+            <div class="text-2xl font-headline font-black text-secondary" id="stabilRate">—</div>
+            <div class="w-full h-1 bg-surface-variant">
+                <div class="h-full bg-secondary threat-bar-fill" id="stabilBar" style="width:0%"></div>
+            </div>
+        </div>
+        <div class="bg-surface-container p-4 flex flex-col justify-between">
+            <span class="text-[10px] font-black text-outline">POPULATION AT RISK</span>
+            <div class="text-2xl font-headline font-black text-on-surface" id="popRisk">—</div>
+            <div class="text-[9px] text-error font-bold" id="popDelta"></div>
+        </div>
+        <div class="bg-surface-container p-4 flex flex-col justify-between">
+            <span class="text-[10px] font-black text-outline">SYSTEM ENTROPY</span>
+            <div class="text-2xl font-headline font-black" id="entropyLabel">—</div>
+            <div class="flex gap-1" id="entropyDots"></div>
+        </div>
+    </div>
+</main>
+
+<!-- BottomNavBar (AI RECS) -->
+<footer class="bg-[#0F1425] text-[#72DE5C] font-['Inter'] text-[10px] tracking-tighter uppercase fixed bottom-0 left-0 w-full z-50 flex items-center justify-between px-4 h-10 border-t-2 border-[#72DE5C] overflow-hidden">
+    <div class="flex items-center gap-4 flex-1">
+        <span class="bg-[#72DE5C] text-[#0A0E1A] px-2 py-0.5 font-black">AI_ADVISORY</span>
+        <div class="overflow-hidden flex-1 relative h-4">
+            <div class="absolute whitespace-nowrap binary-flicker font-mono text-[11px] tracking-widest" id="aiAdvisory">
+                RECOMMENDATION: AWAITING SIMULATION RESULTS…
+            </div>
+        </div>
+    </div>
+    <div class="flex items-center gap-6 ml-8">
+        <a href="/dashboard" class="flex items-center gap-2 text-[#C6C6C7] hover:text-[#72DE5C] cursor-pointer">
+            <span class="material-symbols-outlined text-sm">dashboard</span>
+            <span>DASHBOARD</span>
+        </a>
+        <a id="reportBtn" href="#" class="flex items-center gap-2 text-[#C6C6C7] hover:text-[#72DE5C] cursor-pointer">
+            <span class="material-symbols-outlined text-sm">account_tree</span>
+            <span>REPORTS</span>
+        </a>
+    </div>
+</footer>
+
+<!-- Threat Vector Panel -->
+<div class="fixed top-20 right-8 w-48 bg-surface-container p-4 border border-outline-variant/30 z-20" id="threatPanel">
+    <div class="text-[9px] font-black mb-3 border-b border-outline-variant/30 pb-1">THREAT VECTOR ANALYTICS</div>
+    <div class="space-y-2" id="threatVectors">
+        <div class="flex justify-between text-[8px]">
+            <span class="text-outline">LOADING…</span>
+        </div>
+    </div>
+    <div class="mt-4 flex justify-end">
+        <div class="w-2 h-2 bg-primary"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    const BASE_URL = window.location.origin || 'http://localhost:5001';
+    let lastData = null;
+
+    // Get severity from URL or default
+    const urlParams = new URLSearchParams(window.location.search);
+    const initialSeverity = parseInt(urlParams.get('severity')) || 60;
+    const severitySlider = document.getElementById('severitySlider');
+    severitySlider.value = initialSeverity;
+    document.getElementById('severityValue').textContent = initialSeverity + '%';
+
+    // Slider live update
+    severitySlider.addEventListener('input', (e) => {
+        document.getElementById('severityValue').textContent = e.target.value + '%';
+    });
+
+    // Re-run button
+    document.getElementById('rerunBtn').addEventListener('click', () => {
+        runSimulation(parseInt(severitySlider.value));
+    });
+
+    // ── Run the cyber simulation ──
+    async function runSimulation(severity) {
+        const overlay = document.getElementById('simOverlay');
+        overlay.classList.remove('hidden');
+        overlay.style.opacity = '1';
+
+        try {
+            const res = await fetch(`${BASE_URL}/api/cyber`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ severity, total_nodes: 200 })
+            });
+            const data = await res.json();
+            lastData = data;
+            console.log('Cyber ML response:', data);
+
+            // Small delay for dramatic effect
+            setTimeout(() => {
+                renderResults(data);
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 800);
+
+        } catch (err) {
+            console.error('Cyber API error:', err);
+            overlay.querySelector('span:first-of-type').textContent = 'CONNECTION FAILED';
+            overlay.querySelector('span:last-of-type').textContent = err.message;
+            setTimeout(() => {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 500);
+            }, 2000);
+        }
+    }
+
+    // ── Render all results ──
+    function renderResults(data) {
+        const totalNodes = data.total_nodes || 200;
+        const compromised = data.compromised_count || 0;
+        const safe = data.safe_nodes || (totalNodes - compromised);
+        const severity = data.severity || 0;
+
+        // Determine isolated nodes (nodes we "quarantined" — ~10% of compromised)
+        const isolated = Math.max(0, Math.floor(compromised * 0.15));
+        const actualComp = compromised - isolated;
+
+        // Stats bar
+        document.getElementById('safeCount').textContent = safe;
+        document.getElementById('compCount').textContent = actualComp;
+        document.getElementById('isoCount').textContent = isolated;
+
+        // Threat badge
+        const badge = document.getElementById('threatBadge');
+        if (severity >= 60) {
+            badge.textContent = 'THREAT LEVEL: CRITICAL';
+            badge.className = 'bg-[#93000a] px-3 py-1 text-[10px] font-black border border-[#dc3545] text-[#dc3545]';
+        } else if (severity >= 30) {
+            badge.textContent = 'THREAT LEVEL: ELEVATED';
+            badge.className = 'bg-surface-variant px-3 py-1 text-[10px] font-black border border-primary text-primary';
+        } else {
+            badge.textContent = 'THREAT LEVEL: LOW';
+            badge.className = 'bg-surface-variant px-3 py-1 text-[10px] font-black border border-secondary text-secondary';
+        }
+
+        // Uptime & packet loss
+        const uptime = (100 - severity * 0.08).toFixed(2);
+        const packetLoss = (severity * 0.05).toFixed(2);
+        document.getElementById('uptimeVal').textContent = uptime + '%';
+        document.getElementById('packetLossVal').textContent = packetLoss + '%';
+
+        // Metrics row
+        const resourcePct = ((compromised / totalNodes) * 100).toFixed(1);
+        document.getElementById('resourceLoad').textContent = resourcePct + '%';
+        document.getElementById('resourceBar').style.width = resourcePct + '%';
+
+        const stabilPct = (100 - parseFloat(resourcePct)).toFixed(1);
+        document.getElementById('stabilRate').textContent = stabilPct + '%';
+        document.getElementById('stabilBar').style.width = stabilPct + '%';
+
+        const popAtRisk = (compromised * 0.021).toFixed(1);
+        document.getElementById('popRisk').textContent = popAtRisk + 'M';
+        document.getElementById('popDelta').textContent = '▲ +' + (compromised * 0.001).toFixed(1) + 'M/HR';
+
+        // Entropy dots
+        const entropyLevel = severity >= 60 ? 'CRITICAL' : severity >= 30 ? 'ELEVATED' : 'STABLE';
+        const entropyEl = document.getElementById('entropyLabel');
+        entropyEl.textContent = entropyLevel;
+        entropyEl.className = 'text-2xl font-headline font-black ' +
+            (severity >= 60 ? 'text-error' : severity >= 30 ? 'text-primary' : 'text-secondary');
+
+        const dots = document.getElementById('entropyDots');
+        const filledDots = severity >= 60 ? 4 : severity >= 30 ? 2 : 1;
+        dots.innerHTML = '';
+        for (let i = 0; i < 5; i++) {
+            const d = document.createElement('div');
+            d.className = 'w-2 h-2 ' + (i < filledDots ?
+                (severity >= 60 ? 'bg-error' : 'bg-primary') : 'bg-surface-variant');
+            dots.appendChild(d);
+        }
+
+        // Threat vectors
+        renderThreatVectors(severity);
+
+        // AI Advisory
+        document.getElementById('aiAdvisory').textContent =
+            'RECOMMENDATION: ' + (data.recommendation || 'MONITOR SITUATION');
+
+        // Scan timer
+        document.getElementById('scanTimer').innerHTML =
+            '<span class="material-symbols-outlined text-sm">history</span> LAST SCAN: ' +
+            new Date().toLocaleTimeString();
+
+        // Render node grid
+        renderNodes(totalNodes, data.compromised_nodes || [], isolated);
+
+        // Affected states log
+        if (data.affected_states) {
+            console.log('Affected states:', data.affected_states.join(', '));
+        }
+
+        // ── Save to sessionStorage for Report page ──
+        sessionStorage.setItem('bre_sim_report', JSON.stringify({
+            scenario: 'cyber_attack',
+            severity: data.severity || 0,
+            recommendation: data.recommendation || 'Monitor situation.',
+            affected_states: data.affected_states || [],
+            total_allocated: data.total_allocated || 0,
+            allocation: data.allocation || {},
+            available_units: data.available_units || 0
+        }));
+
+        // ── Wire REPORTS button ──
+        document.getElementById('reportBtn').onclick = (e) => {
+            e.preventDefault();
+            window.location.href = '/report';
+        };
+    }
+
+    // ── Render network nodes ──
+    function renderNodes(total, compromisedIndices, isolatedCount) {
+        const container = document.getElementById('nodesLayer');
+        const svgEl = document.getElementById('edgesSvg');
+        container.innerHTML = '';
+        svgEl.innerHTML = '';
+
+        const compSet = new Set(compromisedIndices.slice(0, compromisedIndices.length - isolatedCount));
+        const isoSet = new Set(compromisedIndices.slice(compromisedIndices.length - isolatedCount));
+
+        // Generate random positions with some clustering for compromised nodes
+        const positions = [];
+        for (let i = 0; i < total; i++) {
+            let x, y;
+            if (compSet.has(i) || isoSet.has(i)) {
+                // Cluster compromised nodes toward center-left
+                x = 15 + Math.random() * 55;
+                y = 10 + Math.random() * 80;
+            } else {
+                x = 5 + Math.random() * 90;
+                y = 5 + Math.random() * 90;
+            }
+            positions.push({ x, y });
+        }
+
+        // Draw edges (connect nearby nodes)
+        for (let i = 0; i < Math.min(total, 80); i++) {
+            for (let j = i + 1; j < Math.min(total, 80); j++) {
+                const dx = positions[i].x - positions[j].x;
+                const dy = positions[i].y - positions[j].y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 15 && Math.random() < 0.3) {
+                    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    line.setAttribute('x1', positions[i].x + '%');
+                    line.setAttribute('y1', positions[i].y + '%');
+                    line.setAttribute('x2', positions[j].x + '%');
+                    line.setAttribute('y2', positions[j].y + '%');
+                    line.setAttribute('stroke', compSet.has(i) || compSet.has(j) ? '#dc3545' : '#909096');
+                    line.setAttribute('stroke-width', '1');
+                    svgEl.appendChild(line);
+                }
+            }
+        }
+
+        // Draw nodes (limit visual nodes for performance)
+        const visualLimit = Math.min(total, 120);
+        for (let i = 0; i < visualLimit; i++) {
+            const node = document.createElement('div');
+            node.className = 'absolute';
+            node.style.left = positions[i].x + '%';
+            node.style.top = positions[i].y + '%';
+
+            if (isoSet.has(i)) {
+                // Isolated (gray X)
+                node.className += ' w-4 h-4 bg-[#909096] flex items-center justify-center text-[8px] text-[#0A0E1A] font-bold';
+                node.textContent = 'X';
+                node.title = `NODE_${String(i).padStart(3, '0')} — ISOLATED`;
+            } else if (compSet.has(i)) {
+                // Compromised (red)
+                const size = Math.random() > 0.7 ? 'w-5 h-5' : 'w-3 h-3';
+                node.className += ` ${size} bg-[#dc3545] node-pulse`;
+                node.style.color = '#dc3545';
+                node.title = `NODE_${String(i).padStart(3, '0')} — COMPROMISED`;
+                // Add ping effect on larger nodes
+                if (size === 'w-5 h-5') {
+                    const ping = document.createElement('div');
+                    ping.className = 'w-5 h-5 bg-[#dc3545] absolute top-0 left-0 animate-ping opacity-30';
+                    node.style.position = 'absolute';
+                    node.appendChild(ping);
+                }
+            } else {
+                // Safe (green)
+                const size = Math.random() > 0.8 ? 'w-3 h-3' : 'w-2 h-2';
+                node.className += ` ${size} bg-[#138808]`;
+                node.title = `NODE_${String(i).padStart(3, '0')} — SAFE`;
+            }
+
+            container.appendChild(node);
+        }
+    }
+
+    // ── Threat vector analytics ──
+    function renderThreatVectors(severity) {
+        const vectors = [
+            { name: 'SYN_FLOOD', level: severity >= 60 ? 'HIGH' : severity >= 30 ? 'MED' : 'LOW' },
+            { name: 'DDoS_CLUSTER', level: severity >= 50 ? 'HIGH' : severity >= 20 ? 'MED' : 'LOW' },
+            { name: 'RANSOM_LOAD', level: severity >= 70 ? 'HIGH' : severity >= 40 ? 'MED' : 'LOW' },
+        ];
+        const colorMap = { HIGH: 'text-error', MED: 'text-primary', LOW: 'text-secondary' };
+        const container = document.getElementById('threatVectors');
+        container.innerHTML = vectors.map(v => `
+            <div class="flex justify-between text-[8px]">
+                <span class="text-outline">${v.name}</span>
+                <span class="${colorMap[v.level]} font-bold">${v.level}</span>
+            </div>
+        `).join('');
+    }
+
+    // ── Auto-run on load ──
+    runSimulation(initialSeverity);
+
+})();
+</script>
+</body>
+</html>
