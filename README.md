@@ -327,9 +327,10 @@ python test_api.py
 
 ---
 
-## 👥 Team
+## 👥 Team and contribution 
 
-Soham Shaw, Harish Kumar Rai, Hrichik Ghosh, Priyanshu Raman
+**Harish Kumar Rai** - Frontend developer
+- Github: [@Harishkrai7](https://github.com/Harishkrai7)
 
 ---
 
